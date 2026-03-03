@@ -1,6 +1,5 @@
-// Use CRA proxy in dev (package.json -> "proxy": "http://localhost")
-// so requests to "/doan/api" go to "http://localhost/doan/api" and avoid CORS.
-const API_BASE_URL = '/doan/api';
+import API_BASE_URL from './config';
+
 
 async function safeReadJson(response) {
   const contentType = response.headers.get('content-type') || '';

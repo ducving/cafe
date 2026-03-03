@@ -1,4 +1,5 @@
-const CATEGORIES_API_URL = '/doan/api/categories.php';
+import API_BASE_URL from './config';
+const CATEGORIES_API_URL = `${API_BASE_URL}/categories.php`;
 
 type CategoryStatus = 'active' | 'inactive';
 

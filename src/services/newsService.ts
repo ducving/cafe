@@ -1,4 +1,5 @@
-export const NEWS_API_URL = '/doan/api/news.php';
+import API_BASE_URL from './config';
+export const NEWS_API_URL = `${API_BASE_URL}/news.php`;
 
 export type NewsStatus = 'active' | 'inactive';
 

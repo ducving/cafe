@@ -1,4 +1,5 @@
-const PRODUCTS_API_URL = '/doan/api/products.php';
+import API_BASE_URL from './config';
+const PRODUCTS_API_URL = `${API_BASE_URL}/products.php`;
 
 export type ProductStatus = 'active' | 'inactive' | 'out_of_stock';
 

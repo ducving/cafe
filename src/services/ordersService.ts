@@ -1,3 +1,5 @@
+import API_BASE_URL from './config';
+
 export interface OrderItemInput {
   product_id: number;
   quantity: number;
@@ -19,7 +21,7 @@ export interface OrderResponse {
   data?: any;
 }
 
-const API_BASE = 'http://localhost/doan/api/orders.php';
+const API_BASE = `${API_BASE_URL}/orders.php`;
 
 export const createOrder = async (orderData: CreateOrderInput): Promise<OrderResponse> => {
   const token = localStorage.getItem('token');

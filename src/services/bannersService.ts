@@ -1,4 +1,5 @@
-const BANNERS_API_URL = '/doan/api/banners.php';
+import API_BASE_URL from './config';
+const BANNERS_API_URL = `${API_BASE_URL}/banners.php`;
 
 export type BannerApi = {
   id: number;
