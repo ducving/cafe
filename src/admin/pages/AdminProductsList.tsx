@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Toolbar } from '../components/ui';
 import { deleteProductApi, fetchProducts, ProductApi } from '../../services/productsService';
+import { useToast } from '../../components/ToastContext';
 
 function formatVnd(n: number): string {
   return new Intl.NumberFormat('vi-VN').format(n) + 'đ';
@@ -9,6 +10,7 @@ function formatVnd(n: number): string {
 
 export default function AdminProductsList(): React.ReactElement {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [products, setProducts] = useState<ProductApi[]>([]);
   const [query, setQuery] = useState<string>('');
   const [confirm, setConfirm] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
@@ -127,9 +129,10 @@ export default function AdminProductsList(): React.ReactElement {
                   .then(() => {
                     setProducts((prev) => prev.filter((p) => p.id !== id));
                     setConfirm({ open: false, id: null });
+                    showToast('Xóa sản phẩm thành công', 'success');
                   })
                   .catch((err: any) => {
-                    alert(err.message || 'Xóa sản phẩm thất bại');
+                    showToast(err.message || 'Xóa sản phẩm thất bại', 'error');
                   });
               }}
             >

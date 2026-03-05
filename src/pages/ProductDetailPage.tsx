@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchProducts, ProductApi } from '../services/productsService';
 import { useCart } from '../user/CartContext';
+import { ProductCard } from '../components/ProductCard';
 
 const GOLD = '#e7b557';
 const ACTIVE_TAB = '#b58849';
@@ -230,126 +231,16 @@ const ProductDetailPage: React.FC = () => {
               Bạn có thể tham khảo thêm 1 số sản phẩm tương tự ở bên dưới
             </p>
 
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              {related.map(p => {
-                const rpPrice = Number(p.sale_price || p.price);
-                const rpOrigPrice = Number(p.price);
-                const rDiscount = p.sale_price && Number(p.sale_price) < rpOrigPrice;
-                const pct = rDiscount ? Math.round((1 - Number(p.sale_price) / rpOrigPrice) * 100) : 0;
-                
-                return (
-                  <div key={p.id} style={{ flex: '1 1 calc(25% - 20px)', minWidth: '220px' }}>
-                    <div
-                      style={{
-                        position: 'relative', backgroundColor: '#fff', border: '1px solid #ebebeb',
-                        transition: 'box-shadow 0.3s ease', paddingBottom: '20px',
-                        display: 'flex', flexDirection: 'column', cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => { 
-                        const target = e.currentTarget as HTMLDivElement;
-                        target.style.boxShadow = '0 10px 25px rgba(0,0,0,0.08)'; 
-                        const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                        if (actions) {
-                          actions.style.opacity = '1';
-                          actions.style.visibility = 'visible';
-                        }
-                      }}
-                      onMouseLeave={(e) => { 
-                        const target = e.currentTarget as HTMLDivElement;
-                        target.style.boxShadow = 'none'; 
-                        const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                        if (actions) {
-                          actions.style.opacity = '0';
-                          actions.style.visibility = 'hidden';
-                        }
-                      }}
-                      onClick={() => navigate(`/product/${p.id}`)}
-                    >
-                      {/* Price Bar Container */}
-                      <div style={{
-                        position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)',
-                        backgroundColor: '#e7b557', padding: '6px 20px', zIndex: 2,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        whiteSpace: 'nowrap', minWidth: '150px'
-                      }}>
-                        <span style={{ color: '#fff', fontSize: '15px', fontWeight: 800 }}>
-                          {new Intl.NumberFormat('vi-VN').format(rpPrice)}₫
-                        </span>
-                      </div>
-
-                      {/* Discount Badge */}
-                      {rDiscount && (
-                        <div style={{
-                          position: 'absolute', top: '10px', right: '10px', zIndex: 2,
-                          backgroundColor: '#c0392b', color: '#fff', padding: '4px 8px',
-                          fontSize: '11px', fontWeight: 800, borderRadius: '3px'
-                        }}>
-                          -{pct}%
-                        </div>
-                      )}
-
-                      {/* Image Area */}
-                      <div style={{ padding: '30px 10px 10px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ height: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {p.image ? (
-                            <img src={p.image} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                          ) : (
-                            <div style={{ fontSize: '50px' }}>☕</div>
-                          )}
-                        </div>
-
-                        {/* Hover Actions - Sticky Left Tabs */}
-                        <div 
-                          className="product-actions"
-                          style={{
-                            position: 'absolute', top: '50%', left: '0', transform: 'translateY(-50%)',
-                            display: 'flex', flexDirection: 'column', gap: '5px',
-                            opacity: 0, visibility: 'hidden', transition: 'all 0.3s ease',
-                            zIndex: 3
-                          }}
-                        >
-                          <button type="button" 
-                            style={{
-                              width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                              border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                            }}
-                            title="Xem nhanh"
-                          >
-                            👁
-                          </button>
-                          <button type="button" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              addItem({id: p.id, name: p.name, price: Number(p.sale_price || p.price), image: p.image ?? null}, 1);
-                              alert("Đã thêm vào giỏ hàng");
-                            }}
-                            style={{
-                              width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                              border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                            }}
-                            title="Thêm vào giỏ"
-                          >
-                            🛒
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Product Name */}
-                      <div style={{ textAlign: 'center', marginTop: '10px', padding: '0 10px' }}>
-                        <h3 style={{ 
-                          margin: 0, fontSize: '15px', fontWeight: 700, 
-                          color: '#004c8c', textTransform: 'uppercase', letterSpacing: '0.3px',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                        }}>
-                          {p.name}
-                        </h3>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px' }}>
+              {related.map(p => (
+                <ProductCard 
+                  key={p.id} 
+                  product={p} 
+                  onAdd={(prod) => {
+                    addItem({id: prod.id, name: prod.name, price: Number(prod.sale_price || prod.price), image: prod.image ?? null}, 1);
+                  }}
+                />
+              ))}
             </div>
           </div>
         )}

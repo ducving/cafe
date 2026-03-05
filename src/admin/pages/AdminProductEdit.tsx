@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { updateProductApi, fetchProductDetail } from '../../services/productsService';
 import { CategoryApi, fetchCategories } from '../../services/categoriesService';
+import { useToast } from '../../components/ToastContext';
 
 type ProductForm = { name: string; sku: string; price: string; stock: string; category: string };
 
 export default function AdminProductEdit(): React.ReactElement {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { id } = useParams<{ id: string }>();
   const inputId = useId();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -39,7 +41,7 @@ export default function AdminProductEdit(): React.ReactElement {
       })
       .catch((err) => {
         console.error('Failed to load edit data:', err);
-        alert('Không thả tải được dữ liệu sản phẩm!');
+        showToast('Không thể tải dữ liệu sản phẩm!', 'error');
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -126,8 +128,9 @@ export default function AdminProductEdit(): React.ReactElement {
         stock_quantity: stock,
         ...(finalImageUrl !== undefined ? { image: finalImageUrl } : {}),
       });
+      showToast('Cập nhật sản phẩm thành công', 'success');
     } catch (err: any) {
-      alert(err.message || 'Sửa sản phẩm thất bại!');
+      showToast(err.message || 'Sửa sản phẩm thất bại!', 'error');
       setSaving(false);
       return;
     }

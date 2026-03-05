@@ -97,7 +97,8 @@ export const updateOrderStatus = async (id: string | number, status: string): Pr
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Bạn cần đăng nhập với quyền Admin');
 
-  const response = await fetch(API_BASE, {
+  // Đảm bảo gửi ID lên cả URL và Body để Backend dễ nhận diện
+  const response = await fetch(`${API_BASE}?id=${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -106,10 +107,10 @@ export const updateOrderStatus = async (id: string | number, status: string): Pr
     body: JSON.stringify({ id, status }),
   });
 
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Lỗi khi cập nhật trạng thái đơn hàng');
+    throw new Error(data.message || 'Lỗi khi cập nhật trạng thái đơn hàng');
   }
 
-  return response.json();
+  return data;
 };

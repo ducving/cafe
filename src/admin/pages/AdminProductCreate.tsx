@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { createProduct } from '../../services/productsService';
 import { CategoryApi, fetchCategories } from '../../services/categoriesService';
+import { useToast } from '../../components/ToastContext';
 
 type ProductForm = { name: string; sku: string; price: string; stock: string; category: string };
 
 export default function AdminProductCreate(): React.ReactElement {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const inputId = useId();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState<ProductForm>({ name: '', sku: '', price: '', stock: '', category: '' });
@@ -117,8 +119,9 @@ export default function AdminProductCreate(): React.ReactElement {
         featured: 1,
         sort_order: 1,
       });
+      showToast('Thêm sản phẩm thành công', 'success');
     } catch (err: any) {
-      alert(err.message || 'Tạo sản phẩm thất bại');
+      showToast(err.message || 'Tạo sản phẩm thất bại', 'error');
       setSaving(false);
       return;
     }

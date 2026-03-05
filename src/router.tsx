@@ -18,9 +18,14 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import News from './pages/News';
 import NewsDetail from './pages/NewsDetail';
 import Profile from './pages/Profile';
+import AttendanceStandalone from './pages/AttendanceStandalone';
 
 // Single place to manage routes (like your router.tsx screenshot)
 export const router = createBrowserRouter([
+  {
+    path: '/attendance',
+    element: <AttendanceStandalone />,
+  },
   {
     path: '/',
     element: <App />,

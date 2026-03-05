@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { fetchCategories, CategoryApi } from '../services/categoriesService';
 import { fetchProducts, ProductApi } from '../services/productsService';
 import { useCart } from '../user/CartContext';
+import { ProductCard } from '../components/ProductCard';
 
 const GOLD = '#c8a96e';
 const BG = '#3a2415';
@@ -230,124 +231,14 @@ export default function ProductsPage(): React.ReactElement {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-              {filtered.map((p) => {
-                const price = Number(p.sale_price || p.price);
-                const originalPrice = Number(p.price);
-                const hasDiscount = p.sale_price && Number(p.sale_price) < originalPrice;
-                const discountPct = hasDiscount ? Math.round((1 - Number(p.sale_price) / originalPrice) * 100) : 0;
-
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => navigate('/product/' + p.id)}
-                    style={{
-                      backgroundColor: '#fff', borderRadius: '8px', overflow: 'hidden',
-                      boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
-                      transition: 'all 0.3s ease',
-                      display: 'flex', flexDirection: 'column',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      border: '1px solid #ebebeb'
-                    }}
-                    onMouseEnter={(e) => { 
-                      const target = e.currentTarget as HTMLDivElement;
-                      target.style.transform = 'translateY(-5px)'; 
-                      target.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)'; 
-                      const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                      if (actions) {
-                        actions.style.opacity = '1';
-                        actions.style.visibility = 'visible';
-                      }
-                    }}
-                    onMouseLeave={(e) => { 
-                      const target = e.currentTarget as HTMLDivElement;
-                      target.style.transform = ''; 
-                      target.style.boxShadow = '0 1px 6px rgba(0,0,0,0.06)'; 
-                      const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                      if (actions) {
-                        actions.style.opacity = '0';
-                        actions.style.visibility = 'hidden';
-                      }
-                    }}
-                  >
-                    {/* Price Bar Container */}
-                    <div style={{
-                      position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)',
-                      backgroundColor: '#e7b557', padding: '6px 20px', zIndex: 10,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      whiteSpace: 'nowrap', minWidth: '150px'
-                    }}>
-                      <span style={{ color: '#fff', fontSize: '15px', fontWeight: 800 }}>
-                        {new Intl.NumberFormat('vi-VN').format(price)}₫
-                      </span>
-                    </div>
-
-                    {/* Image area */}
-                    <div style={{ position: 'relative', height: '220px', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '30px 10px 10px' }}>
-                      {p.image ? (
-                        <img src={p.image} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <div style={{ fontSize: '60px' }}>☕</div>
-                      )}
-
-                      {/* Discount badge */}
-                      {hasDiscount && (
-                        <div style={{
-                          position: 'absolute', top: '10px', right: '10px',
-                          backgroundColor: '#c0392b', color: '#fff',
-                          padding: '4px 8px', borderRadius: '3px', fontSize: '11px', fontWeight: 800,
-                        }}>
-                          -{discountPct}%
-                        </div>
-                      )}
-
-                      {/* Hover Actions - Sticky Left Tabs */}
-                      <div 
-                        className="product-actions"
-                        style={{
-                          position: 'absolute', top: '50%', left: '0', transform: 'translateY(-50%)',
-                          display: 'flex', flexDirection: 'column', gap: '5px',
-                          opacity: 0, visibility: 'hidden', transition: 'all 0.3s ease',
-                          zIndex: 3
-                        }}
-                      >
-                        <button type="button" 
-                          onClick={(e) => { e.stopPropagation(); navigate('/product/' + p.id); }}
-                          style={{
-                            width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                            border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                          }}
-                          title="Xem nhanh"
-                        >
-                          👁
-                        </button>
-                        <button type="button" 
-                          onClick={(e) => { e.stopPropagation(); handleAdd(p); }}
-                          style={{
-                            width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                            border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                          }}
-                          title="Thêm vào giỏ"
-                        >
-                          🛒
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ padding: '15px 10px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #f3f4f6' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#004c8c', textTransform: 'uppercase', letterSpacing: '0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.name}
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: '#c0392b' }}>
-                        {new Intl.NumberFormat('vi-VN').format(price)}₫
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filtered.map((p) => (
+                <ProductCard 
+                  key={p.id} 
+                  product={p} 
+                  onAdd={() => handleAdd(p)} 
+                  isAdding={addingId === p.id} 
+                />
+              ))}
             </div>
           )}
         </div>

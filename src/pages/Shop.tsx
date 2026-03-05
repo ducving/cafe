@@ -5,6 +5,8 @@ import { fetchNewsActive, NewsApi } from '../services/newsService';
 import { fetchCategories, CategoryApi } from '../services/categoriesService';
 import { useCart } from '../user/CartContext';
 import BannerSection from '../components/BannerSection';
+import { getImageUrl } from '../services/config';
+import { ProductCard } from '../components/ProductCard';
 
 const GOLD = '#c8a96e';
 
@@ -72,7 +74,7 @@ export default function Shop(): React.ReactElement {
               onClick={() => navigate('/category/' + categories[0].id)}
             >
               <img
-                src={categories[0].image ? (categories[0].image.startsWith('http') ? categories[0].image : `/doan/${categories[0].image}`) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner1.png?1705464185330'}
+                src={categories[0].image ? getImageUrl(categories[0].image) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner1.png?1705464185330'}
                 alt={categories[0].name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
@@ -99,7 +101,7 @@ export default function Shop(): React.ReactElement {
               onClick={() => navigate('/category/' + categories[1].id)}
             >
               <img
-                src={categories[1].image ? (categories[1].image.startsWith('http') ? categories[1].image : `/doan/${categories[1].image}`) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner2.png?1705464185330'}
+                src={categories[1].image ? getImageUrl(categories[1].image) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner2.png?1705464185330'}
                 alt={categories[1].name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
@@ -123,7 +125,7 @@ export default function Shop(): React.ReactElement {
               onClick={() => navigate('/category/' + categories[2].id)}
             >
               <img
-                src={categories[2].image ? (categories[2].image.startsWith('http') ? categories[2].image : `/doan/${categories[2].image}`) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner3.png?1705464185330'}
+                src={categories[2].image ? getImageUrl(categories[2].image) : '//bizweb.dktcdn.net/100/351/580/themes/714586/assets/module_banner3.png?1705464185330'}
                 alt={categories[2].name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
@@ -202,7 +204,7 @@ export default function Shop(): React.ReactElement {
                     {/* Product image (round) */}
                     <div style={{ flexShrink: 0, width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(200,169,110,0.3)' }}>
                       {p.image ? (
-                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={getImageUrl(p.image)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>☕</div>
                       )}
@@ -271,117 +273,17 @@ export default function Shop(): React.ReactElement {
             </div>
             
             {/* Products Card style */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-              {products.slice(0, 4).map(p => {
-                const rpPrice = Number(p.sale_price || p.price);
-                const rpOrigPrice = Number(p.price);
-                const rDiscount = p.sale_price && Number(p.sale_price) < rpOrigPrice;
-
-                return (
-                  <div key={p.id} style={{ minWidth: '220px' }}>
-                    <div
-                      style={{
-                        position: 'relative', backgroundColor: '#fff', border: '1px solid #ebebeb',
-                        transition: 'box-shadow 0.3s ease', paddingBottom: '20px',
-                        display: 'flex', flexDirection: 'column', cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => { 
-                        const target = e.currentTarget as HTMLDivElement;
-                        target.style.transform = 'translateY(-5px)'; 
-                        target.style.boxShadow = '0 10px 25px rgba(0,0,0,0.08)'; 
-                        const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                        if (actions) {
-                          actions.style.opacity = '1';
-                          actions.style.visibility = 'visible';
-                        }
-                      }}
-                      onMouseLeave={(e) => { 
-                        const target = e.currentTarget as HTMLDivElement;
-                        target.style.transform = ''; 
-                        target.style.boxShadow = 'none'; 
-                        const actions = target.querySelector('.product-actions') as HTMLDivElement;
-                        if (actions) {
-                          actions.style.opacity = '0';
-                          actions.style.visibility = 'hidden';
-                        }
-                      }}
-                      onClick={() => navigate(`/product/${p.id}`)}
-                    >
-                      {/* Price Bar Container */}
-                      <div style={{
-                        position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)',
-                        backgroundColor: '#e7b557', padding: '6px 20px', zIndex: 2,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        whiteSpace: 'nowrap', minWidth: '150px'
-                      }}>
-                        <span style={{ color: '#fff', fontSize: '15px', fontWeight: 800 }}>
-                          {new Intl.NumberFormat('vi-VN').format(rpPrice)}₫
-                        </span>
-                      </div>
-
-                      {/* Image Area */}
-                      <div style={{ padding: '30px 10px 10px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ height: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {p.image ? (
-                            <img src={p.image} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                          ) : (
-                            <div style={{ fontSize: '50px' }}>☕</div>
-                          )}
-                        </div>
-
-                        {/* Hover Actions - Sticky Left Tabs */}
-                        <div 
-                          className="product-actions"
-                          style={{
-                            position: 'absolute', top: '50%', left: '0', transform: 'translateY(-50%)',
-                            display: 'flex', flexDirection: 'column', gap: '5px',
-                            opacity: 0, visibility: 'hidden', transition: 'all 0.3s ease',
-                            zIndex: 3
-                          }}
-                        >
-                          <button type="button" 
-                            onClick={(e) => { e.stopPropagation(); navigate('/product/' + p.id); }}
-                            style={{
-                              width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                              border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                            }}
-                            title="Xem nhanh"
-                          >
-                            👁
-                          </button>
-                          <button type="button" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleAdd(p);
-                              alert("Đã thêm vào giỏ hàng");
-                            }}
-                            style={{
-                              width: '45px', height: '40px', backgroundColor: '#e7b557', color: '#fff',
-                              border: 'none', borderRadius: '0 20px 20px 0', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                            }}
-                            title="Thêm vào giỏ"
-                          >
-                            🛒
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Product Name */}
-                      <div style={{ textAlign: 'center', marginTop: '10px', padding: '0 10px' }}>
-                        <h3 style={{ 
-                          margin: 0, fontSize: '15px', fontWeight: 700, 
-                          color: '#004c8c', textTransform: 'uppercase', letterSpacing: '0.3px',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                        }}>
-                          {p.name}
-                        </h3>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px' }}>
+              {products.slice(0, 4).map(p => (
+                <ProductCard 
+                  key={p.id} 
+                  product={p} 
+                  onAdd={() => {
+                    handleAdd(p);
+                  }}
+                  isAdding={addingId === p.id}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -407,7 +309,7 @@ export default function Shop(): React.ReactElement {
               .slice(0, 3)
               .map(news => {
               const imageUrl = news.image 
-                ? (news.image.startsWith('http') ? news.image : `/doan/${news.image}`)
+                ? getImageUrl(news.image)
                 : 'https://via.placeholder.com/400x250?text=No+Image';
                 
               const displayDate = news.created_at 

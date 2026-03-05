@@ -1,6 +1,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Toolbar } from '../components/ui';
 import { CategoryApi, createCategory, deleteCategoryApi, fetchCategories, updateCategory } from '../../services/categoriesService';
+import { getImageUrl } from '../../services/config';
+import { useToast } from '../../components/ToastContext';
 
 type Category = { id: number; name: string; slug: string; image?: string };
 
@@ -11,6 +13,7 @@ const initialCategories: Category[] = [
 ];
 
 export default function AdminCategories(): React.ReactElement {
+  const { showToast } = useToast();
   const inputId = useId();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -20,6 +23,7 @@ export default function AdminCategories(): React.ReactElement {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [dragOver, setDragOver] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [image, setImage] = useState<{ file: File | null; preview: string; keep?: string }>({
     file: null,
     preview: '',
@@ -66,59 +70,100 @@ export default function AdminCategories(): React.ReactElement {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (saving) return;
+
     const name = form.name.trim();
     const slug = form.slug.trim();
     if (!name || !slug) return;
 
-    // Lấy URL đang có: ưu tiên URL từ API (keep), nếu không thì dùng blob preview
-    const imageUrl: string | undefined = image.keep || image.preview || undefined;
+    setSaving(true);
 
-    if (editingId) {
+    // 1. CHUYỂN ẢNH SANG BASE64 GIỐNG TRANG SẢN PHẨM
+    let finalImageUrl: string | null = null;
+    if (image.file) {
       try {
+        finalImageUrl = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.src = image.preview;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 800;
+            const MAX_HEIGHT = 800;
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+          img.onerror = reject;
+        });
+      } catch (err) {
+        console.error('Lỗi chuyển đổi ảnh:', err);
+      }
+    } else if (image.keep) {
+      finalImageUrl = image.keep;
+    }
+
+    try {
+      if (editingId) {
+        // CẬP NHẬT (PUT)
         const updated = await updateCategory({
           id: editingId,
           name,
-          description: '',
-          image: imageUrl ?? null,
+          slug,
+          image: finalImageUrl,
           status: 'active',
         });
+
+        if (!updated) throw new Error('Không nhận được phản hồi từ máy chủ');
 
         setCategories((prev) =>
           prev.map((c) =>
             c.id === editingId
-              ? { ...c, name: updated.name, slug: updated.slug, image: updated.image ?? imageUrl ?? c.image }
+              ? { ...c, name: updated.name, slug: updated.slug, image: updated.image ?? (finalImageUrl || undefined) }
               : c
           )
         );
-      } catch (err: any) {
-        alert(err.message || 'Cập nhật danh mục thất bại');
+      } else {
+        // THÊM MỚI (POST)
+        const created = await createCategory({
+          name,
+          slug,
+          image: finalImageUrl,
+          status: 'active',
+          sort_order: 1,
+        });
+
+        setCategories((prev) => [
+          {
+            id: created.id,
+            name: created.name,
+            slug: created.slug,
+            image: created.image ?? (finalImageUrl || undefined),
+          },
+          ...prev,
+        ]);
       }
+      showToast(editingId ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công', 'success');
       resetForm();
-      return;
-    }
-
-    try {
-      const created = await createCategory({
-        name,
-        description: '',
-        image: imageUrl ?? null,
-        status: 'active',
-        sort_order: 1,
-      });
-
-      setCategories((prev) => [
-        {
-          id: created.id,
-          name: created.name,
-          slug: created.slug,
-          image: created.image ?? imageUrl,
-        },
-        ...prev,
-      ]);
     } catch (err: any) {
-      alert(err.message || 'Tạo danh mục thất bại');
+      showToast(err.message || 'Thao tác thất bại', 'error');
+    } finally {
+      setSaving(false);
     }
-    resetForm();
   };
 
   return (
@@ -211,7 +256,7 @@ export default function AdminCategories(): React.ReactElement {
                     </div>
                   ) : image.keep ? (
                     <div className="aUploadPreview">
-                      <img src={image.keep} alt="preview" className="aUploadImg" />
+                      <img src={getImageUrl(image.keep)} alt="preview" className="aUploadImg" />
                       <div className="aUploadMeta">
                         <div className="aUploadName">Ảnh danh mục</div>
                         <div className="aUploadHint">Bấm để đổi ảnh hoặc kéo/thả ảnh khác</div>
@@ -252,8 +297,8 @@ export default function AdminCategories(): React.ReactElement {
               <Button variant="ghost" type="button" onClick={resetForm}>
                 Hủy
               </Button>
-              <Button variant="primary" type="submit">
-                {editingId ? 'Cập nhật' : 'Tạo mới'}
+              <Button variant="primary" type="submit" disabled={saving}>
+                {saving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Tạo mới')}
               </Button>
             </div>
           </form>
@@ -295,7 +340,7 @@ export default function AdminCategories(): React.ReactElement {
                 {filtered.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      {c.image ? <img src={c.image} alt={c.name} className="aThumb" /> : <div className="aThumbPlaceholder" />}
+                      {c.image ? <img src={getImageUrl(c.image)} alt={c.name} className="aThumb" /> : <div className="aThumbPlaceholder" />}
                     </td>
                     <td style={{ fontWeight: 950 }}>{c.name}</td>
                     <td style={{ color: '#64748b' }}>{c.slug}</td>
@@ -348,9 +393,10 @@ export default function AdminCategories(): React.ReactElement {
                     setCategories((prev) => prev.filter((x) => x.id !== id));
                     if (editingId === id) resetForm();
                     setConfirm({ open: false, id: null });
+                    showToast('Xóa danh mục thành công', 'success');
                   })
                   .catch((err: any) => {
-                    alert(err.message || 'Xóa danh mục thất bại');
+                    showToast(err.message || 'Xóa danh mục thất bại', 'error');
                   });
               }}
             >

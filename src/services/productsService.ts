@@ -142,7 +142,7 @@ export async function updateProductApi(id: number, payload: Partial<CreateProduc
     status: payload.status ?? 'active',
   });
 
-  const res = await requestJson<{ success: boolean; message: string; product: ProductApi }>(PRODUCTS_API_URL, {
+  const res = await requestJson<{ success: boolean; message: string; product: ProductApi }>(`${PRODUCTS_API_URL}?id=${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

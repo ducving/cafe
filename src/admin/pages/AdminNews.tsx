@@ -7,8 +7,10 @@ import {
   deleteNewsApi, 
   NewsApi 
 } from '../../services/newsService';
+import { useToast } from '../../components/ToastContext';
 
 export default function AdminNews(): React.ReactElement {
+  const { showToast } = useToast();
   const [news, setNews] = useState<NewsApi[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
@@ -36,7 +38,7 @@ export default function AdminNews(): React.ReactElement {
       const data = await fetchNewsAll();
       setNews(data);
     } catch (e: any) {
-      alert(e.message || 'Lỗi tải danh sách tin tức');
+      showToast(e.message || 'Lỗi tải danh sách tin tức', 'error');
     } finally {
       setLoading(false);
     }
@@ -51,18 +53,18 @@ export default function AdminNews(): React.ReactElement {
   // Handle Add
   const handleAddNew = async () => {
     if (!title.trim() || !content.trim()) {
-      alert('Vui lòng nhập tiêu đề và nội dung');
+      showToast('Vui lòng nhập tiêu đề và nội dung', 'warning');
       return;
     }
     setSubmitting(true);
     try {
       await createNewsApi({ title, content, status, image: imageFile });
-      alert('Thêm mới thành công');
+      showToast('Thêm mới tin tức thành công', 'success');
       setAddModalOpen(false);
       resetForm();
       loadData();
     } catch (e: any) {
-      alert(e.message || 'Lỗi thêm tin tức');
+      showToast(e.message || 'Lỗi thêm tin tức', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -80,18 +82,18 @@ export default function AdminNews(): React.ReactElement {
   const handleUpdate = async () => {
     if (!isEditModalOpen.news?.id) return;
     if (!title.trim() || !content.trim()) {
-      alert('Vui lòng nhập tiêu đề và nội dung');
+      showToast('Vui lòng nhập tiêu đề và nội dung', 'warning');
       return;
     }
     setSubmitting(true);
     try {
       await updateNewsApi({ id: isEditModalOpen.news.id, title, content, status });
-      alert('Cập nhật thành công');
+      showToast('Cập nhật tin tức thành công', 'success');
       setEditModalOpen({ open: false, news: null });
       resetForm();
       loadData();
     } catch (e: any) {
-      alert(e.message || 'Lỗi cập nhật');
+      showToast(e.message || 'Lỗi cập nhật', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -103,11 +105,11 @@ export default function AdminNews(): React.ReactElement {
     setSubmitting(true);
     try {
       await deleteNewsApi(confirmDelete.id);
-      alert('Đã xóa thành công');
+      showToast('Đã xóa bài viết thành công', 'success');
       setConfirmDelete({ open: false, id: null });
       loadData();
     } catch (e: any) {
-      alert(e.message || 'Lỗi xóa tin tức');
+      showToast(e.message || 'Lỗi xóa tin tức', 'error');
     } finally {
       setSubmitting(false);
     }

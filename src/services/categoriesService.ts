@@ -62,52 +62,58 @@ export async function fetchCategories(): Promise<CategoryApi[]> {
 
 export type CreateCategoryPayload = {
   name: string;
+  slug?: string;
   description?: string;
-  image?: string | null;
+  image?: File | string | null;
   status?: CategoryStatus;
   sort_order?: number;
 };
 
 export async function createCategory(payload: CreateCategoryPayload): Promise<CategoryApi> {
-  const body = JSON.stringify({
-    name: payload.name,
-    description: payload.description ?? '',
-    image: payload.image ?? null,
-    status: payload.status ?? 'active',
-    sort_order: payload.sort_order ?? 1,
-  });
+  const bodyData: any = { ...payload };
+  if (bodyData.image instanceof File) {
+    delete bodyData.image; // Sẽ xử lý chuyển Base64 ở Frontend
+  }
 
-  const res = await requestJson<ApiCreateCategoryResponse>(CATEGORIES_API_URL, {
+  const res = await requestJson<any>(CATEGORIES_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeaders(),
     },
-    body,
+    body: JSON.stringify(bodyData),
   });
 
-  return res.category;
+  return res.category || res.data;
 }
 
 export type UpdateCategoryPayload = {
   id: number;
   name?: string;
+  slug?: string;
   description?: string;
-  image?: string | null;
+  image?: File | string | null;
   status?: CategoryStatus;
   sort_order?: number;
 };
 
 export async function updateCategory(payload: UpdateCategoryPayload): Promise<CategoryApi> {
-  const res = await requestJson<ApiItemResponse<CategoryApi>>(CATEGORIES_API_URL, {
+  // Chuẩn bị dữ liệu JSON (không gửi File object qua JSON được)
+  const bodyData: any = { ...payload };
+  if (bodyData.image instanceof File) {
+    delete bodyData.image; 
+  }
+
+  const res = await requestJson<any>(`${CATEGORIES_API_URL}?id=${payload.id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeaders(),
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(bodyData),
   });
-  return res.data;
+  
+  return res.category || res.data;
 }
 
 export async function deleteCategoryApi(id: number): Promise<void> {

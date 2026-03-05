@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
+import { useToast } from '../components/ToastContext';
 
 export type CartItem = {
   id: number;
@@ -21,6 +22,7 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+  const { showToast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
 
   const addItem = (item: Omit<CartItem, 'quantity'>, qty = 1) => {
@@ -31,6 +33,7 @@ export function CartProvider({ children }: { children: React.ReactNode }): React
       }
       return [...prev, { ...item, quantity: qty }];
     });
+    showToast(`Đã thêm ${item.name} vào giỏ hàng`, 'success');
   };
 
   const updateQty = (id: number, qty: number) => {

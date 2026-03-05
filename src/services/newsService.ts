@@ -86,7 +86,7 @@ export async function updateNewsApi(payload: { id: number; title: string; conten
   const body = JSON.stringify(payload);
 
   const res = await requestJson<{ success: boolean; message: string; news: NewsApi }>(
-    NEWS_API_URL,
+    `${NEWS_API_URL}?id=${payload.id}`,
     {
       method: 'PUT',
       headers: {

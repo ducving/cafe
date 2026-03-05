@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginAPI } from '../services/api';
+import { useToast } from '../components/ToastContext';
 
 type AnyObject = Record<string, any>;
 
@@ -45,6 +46,7 @@ export default function Login(): React.ReactElement {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -52,7 +54,7 @@ export default function Login(): React.ReactElement {
     setLoading(true);
 
     if (!identifier || !password) {
-      setError('Vui lòng nhập đầy đủ thông tin');
+      showToast('Vui lòng nhập đầy đủ thông tin', 'warning');
       setLoading(false);
       return;
     }
@@ -66,6 +68,7 @@ export default function Login(): React.ReactElement {
       if (user) localStorage.setItem('user', JSON.stringify(user));
 
       const nextPath = isAdminUser(user) ? '/admin' : '/';
+      showToast('Đăng nhập thành công', 'success');
       navigate(nextPath);
     } else {
       setError(result.error);
