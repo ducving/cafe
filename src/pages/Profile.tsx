@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfileAPI, fetchProfileAPI } from '../services/api';
 import { fetchPaymentsHistory } from '../services/paymentsService';
+import { fetchPoints, PointsData } from '../services/pointsService';
 import { useToast } from '../components/ToastContext';
 import { Button } from '../admin/components/ui';
 
@@ -26,7 +27,8 @@ export default function Profile(): React.ReactElement {
   });
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'points'>('profile');
+  const [pointsData, setPointsData] = useState<PointsData | null>(null);
 
   const loadProfile = async (userId: any) => {
     try {
@@ -83,6 +85,8 @@ export default function Profile(): React.ReactElement {
         avatar: parsed.avatar || ''
       });
       loadProfile(parsed.id); // Gọi API cập nhật
+      // Load điểm tích lũy
+      fetchPoints().then(res => { if (res.success) setPointsData(res); }).catch(() => {});
     } else {
       navigate('/login');
     }
@@ -286,31 +290,80 @@ export default function Profile(): React.ReactElement {
             </div>
           </div>
 
+          {/* ĐIỂM TÍCH LŨY CARD */}
+          {pointsData && (
+            <div style={{
+              background: `linear-gradient(135deg, #3a2415 0%, #6b3e1e 100%)`,
+              padding: '22px', borderRadius: '16px',
+              boxShadow: '0 8px 24px rgba(58,36,21,0.25)', color: '#fff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, opacity: 0.85 }}>Điểm tích lũy</span>
+                <span style={{
+                  padding: '3px 10px', borderRadius: '20px', fontSize: '11px',
+                  fontWeight: 700, backgroundColor: pointsData.rank.color, color: '#3a2415'
+                }}>
+                  {pointsData.rank.name === 'Kim cương' ? '💎' :
+                   pointsData.rank.name === 'Vàng' ? '🥇' :
+                   pointsData.rank.name === 'Bạc' ? '🥈' : '🥉'} {pointsData.rank.name}
+                </span>
+              </div>
+              <div style={{ fontSize: '40px', fontWeight: 900, color: GOLD, lineHeight: 1, marginBottom: '12px' }}>
+                {pointsData.points.toLocaleString('vi-VN')}
+                <span style={{ fontSize: '16px', fontWeight: 600, color: '#fff9', marginLeft: '6px' }}>điểm</span>
+              </div>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: GOLD }}>{pointsData.total_earned}</div>
+                  <div style={{ fontSize: '11px', color: '#fff8' }}>Đã kiếm</div>
+                </div>
+                <div style={{ width: '1px', backgroundColor: '#fff2' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fca5a5' }}>{pointsData.total_spent}</div>
+                  <div style={{ fontSize: '11px', color: '#fff8' }}>Đã dùng</div>
+                </div>
+                <div style={{ width: '1px', backgroundColor: '#fff2' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#fff8', marginTop: '4px' }}>1 điểm</div>
+                  <div style={{ fontSize: '11px', color: '#fff8' }}>= 1.000đ</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button 
-               onClick={() => setActiveTab('profile')}
-               style={{ 
-                 padding: '12px', border: 'none', background: activeTab === 'profile' ? '#f5f0ea' : 'none', 
-                 textAlign: 'left', fontSize: '14px', borderRadius: '8px', cursor: 'pointer', 
-                 color: activeTab === 'profile' ? GOLD : DARK, fontWeight: activeTab === 'profile' ? 700 : 500,
-                 transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px' 
-               }}>
-               <span>⚙️</span> Cài đặt tài khoản
-            </button>
-            <button 
-               onClick={() => {
-                 setActiveTab('orders');
-                 loadOrderHistory();
+            {(['profile', 'points'] as const).map((tab) => {
+              const labels: Record<string, string> = { profile: '⚙️ Cài đặt tài khoản', points: '⭐ Điểm thưởng' };
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '12px', border: 'none',
+                    background: activeTab === tab ? '#f5f0ea' : 'none',
+                    textAlign: 'left', fontSize: '14px', borderRadius: '8px', cursor: 'pointer',
+                    color: activeTab === tab ? GOLD : DARK, fontWeight: activeTab === tab ? 700 : 500,
+                    transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px'
+                  }}
+                >
+                  {labels[tab]}
+                </button>
+              );
+            })}
+            <button
+               onClick={() => navigate('/order-history')}
+               style={{
+                 padding: '12px', border: 'none', background: 'none',
+                 textAlign: 'left', fontSize: '14px', borderRadius: '8px', cursor: 'pointer',
+                 color: DARK, fontWeight: 500,
+                 transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px'
                }}
-               style={{ 
-                 padding: '12px', border: 'none', background: activeTab === 'orders' ? '#f5f0ea' : 'none', 
-                 textAlign: 'left', fontSize: '14px', borderRadius: '8px', cursor: 'pointer', 
-                 color: activeTab === 'orders' ? GOLD : DARK, fontWeight: activeTab === 'orders' ? 700 : 500,
-                 transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px' 
-               }}>
+               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f0ea'}
+               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
                <span>🛍️</span> Lịch sử mua hàng
             </button>
-            <button 
+            <button
                onClick={handleLogout}
                style={{ padding: '12px', border: 'none', background: 'none', textAlign: 'left', fontSize: '14px', borderRadius: '8px', cursor: 'pointer', color: '#ef4444', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px' }}>
                <span>🚪</span> Đăng xuất
@@ -425,51 +478,218 @@ export default function Profile(): React.ReactElement {
                 </p>
               </div>
             </>
+          ) : activeTab === 'points' ? (
+            <div style={{ backgroundColor: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+              <h2 style={{ fontSize: '20px', color: DARK, marginBottom: '8px', fontWeight: 700 }}>Điểm thưởng & Lịch sử</h2>
+              <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '28px' }}>10.000đ chi tiêu = 1 điểm · 1 điểm = 1.000đ giảm giá</p>
+
+              {pointsData ? (
+                <>
+                  {/* Rank Progress */}
+                  {(() => {
+                    const ranks = [
+                      { name: 'Đồng', emoji: '🥉', color: '#cd7f32', min: 0, next: 100 },
+                      { name: 'Bạc', emoji: '🥈', color: '#94a3b8', min: 100, next: 500 },
+                      { name: 'Vàng', emoji: '🥇', color: '#fbbf24', min: 500, next: 1000 },
+                      { name: 'Kim cương', emoji: '💎', color: '#a5f3fc', min: 1000, next: null },
+                    ];
+                    const total = pointsData.total_earned;
+                    const currentRankIdx = ranks.findIndex((r, i) => {
+                      const nextRank = ranks[i + 1];
+                      return total >= r.min && (!nextRank || total < nextRank.min);
+                    });
+                    const currentRk = ranks[Math.max(0, currentRankIdx)];
+                    const nextRk = ranks[currentRankIdx + 1];
+                    const progress = nextRk ? Math.min(100, ((total - currentRk.min) / (nextRk.min - currentRk.min)) * 100) : 100;
+                    return (
+                      <div style={{ marginBottom: '28px', padding: '20px', borderRadius: '16px', background: 'linear-gradient(135deg, #3a2415, #6b3e1e)', color: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                          <div>
+                            <div style={{ fontSize: '13px', opacity: 0.75, marginBottom: '4px' }}>Hạng hiện tại</div>
+                            <div style={{ fontSize: '22px', fontWeight: 900 }}>{currentRk.emoji} {currentRk.name}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '13px', opacity: 0.75, marginBottom: '4px' }}>Tổng điểm tích lũy</div>
+                            <div style={{ fontSize: '28px', fontWeight: 900, color: GOLD }}>{pointsData.total_earned.toLocaleString('vi-VN')}</div>
+                          </div>
+                        </div>
+                        {nextRk && (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.7, marginBottom: '6px' }}>
+                              <span>{currentRk.name}</span>
+                              <span>{nextRk.emoji} {nextRk.name} ({nextRk.min} điểm)</span>
+                            </div>
+                            <div style={{ height: '8px', borderRadius: '99px', backgroundColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${progress}%`, borderRadius: '99px', background: `linear-gradient(90deg, ${GOLD}, #f5d49a)`, transition: 'width 0.8s ease' }} />
+                            </div>
+                            <div style={{ fontSize: '12px', opacity: 0.75, marginTop: '8px', textAlign: 'center' }}>
+                              Còn {nextRk.min - total} điểm nữa để lên hạng {nextRk.name}
+                            </div>
+                          </>
+                        )}
+                        {!nextRk && (
+                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#a5f3fc', fontWeight: 700, marginTop: '8px' }}>🎉 Bạn đang ở hạng cao nhất!</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Stats row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '28px' }}>
+                    {[
+                      { label: 'Điểm hiện có', value: pointsData.points, unit: 'điểm', color: GOLD, bg: '#fffbf0' },
+                      { label: 'Tổng đã kiếm', value: pointsData.total_earned, unit: 'điểm', color: '#22c55e', bg: '#f0fdf4' },
+                      { label: 'Đã sử dụng', value: pointsData.total_spent, unit: 'điểm', color: '#ef4444', bg: '#fef2f2' },
+                    ].map(stat => (
+                      <div key={stat.label} style={{ padding: '16px', borderRadius: '12px', backgroundColor: stat.bg, textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: 900, color: stat.color }}>{stat.value.toLocaleString('vi-VN')}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '4px' }}>{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Transaction History */}
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: DARK, marginBottom: '16px' }}>Lịch sử giao dịch</h3>
+                  {pointsData.history.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '10px' }}>⭐</div>
+                      <div style={{ fontWeight: 600 }}>Chưa có giao dịch nào</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {pointsData.history.map((tx) => {
+                        const isEarn = tx.type === 'earn';
+                        const isRedeem = tx.type === 'redeem';
+                        const txColor = isEarn ? '#22c55e' : isRedeem ? '#ef4444' : '#f59e0b';
+                        const txBg = isEarn ? '#f0fdf4' : isRedeem ? '#fef2f2' : '#fffbeb';
+                        const txIcon = isEarn ? '⬆️' : isRedeem ? '⬇️' : '🔄';
+                        const txLabel = isEarn ? 'Cộng điểm' : isRedeem ? 'Dùng điểm' : 'Hoàn điểm';
+                        return (
+                          <div key={tx.id} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '14px 16px', borderRadius: '12px', backgroundColor: '#fafafa',
+                            border: '1px solid #f0f0f0', transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9f5f0'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fafafa'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: txBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                                {txIcon}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: DARK }}>{tx.note || txLabel}</div>
+                                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                                  {new Date(tx.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: txColor, backgroundColor: txBg, padding: '2px 7px', borderRadius: '6px' }}>{txLabel}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 900, color: txColor }}>
+                              {isEarn || tx.type === 'refund' ? '+' : '-'}{Math.abs(tx.points).toLocaleString('vi-VN')} điểm
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  <div className="spinner" style={{ margin: '0 auto 15px' }} />
+                  <div>Đang tải dữ liệu điểm...</div>
+                </div>
+              )}
+            </div>
           ) : (
             <div style={{ backgroundColor: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
               <h2 style={{ fontSize: '20px', color: DARK, marginBottom: '30px', fontWeight: 700, borderBottom: '1px solid #f0f0f0', paddingBottom: '15px' }}>Lịch sử mua hàng</h2>
               
               {loadingOrders ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Đang tải đơn hàng...</div>
+                <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}>
+                   <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                   <p style={{ fontWeight: 600 }}>Đang tải lịch sử đơn hàng...</p>
+                </div>
               ) : orders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ fontSize: '40px', marginBottom: '10px' }}>🛒</div>
-                  <div style={{ color: '#888', marginBottom: '20px' }}>Bạn chưa có đơn hàng nào.</div>
-                  <Button variant="primary" onClick={() => navigate('/shop')} style={{ fontWeight: 600 }}>Mua sắm ngay</Button>
+                <div style={{ textAlign: 'center', padding: '60px' }}>
+                  <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }}>📦</div>
+                  <h3 style={{ color: DARK, fontSize: '18px', marginBottom: '10px', fontWeight: 700 }}>Chưa có giao dịch nào</h3>
+                  <p style={{ color: '#888', marginBottom: '25px', fontSize: '14px' }}>Hãy chọn cho mình những món đồ uống tuyệt vời nhất từ thực đơn của chúng tôi.</p>
+                  <Button variant="primary" onClick={() => navigate('/shop')} style={{ fontWeight: 700, padding: '12px 30px' }}>KHÁM PHÁ MENU</Button>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                    <thead>
-                      <tr style={{ textAlign: 'left', borderBottom: '2px solid #f0f0f0' }}>
-                        <th style={{ padding: '12px 8px', fontSize: '13px', color: '#888', fontWeight: 700 }}>MÃ ĐƠN</th>
-                        <th style={{ padding: '12px 8px', fontSize: '13px', color: '#888', fontWeight: 700 }}>THỜI GIAN</th>
-                        <th style={{ padding: '12px 8px', fontSize: '13px', color: '#888', fontWeight: 700 }}>TỔNG CỘNG</th>
-                        <th style={{ padding: '12px 8px', fontSize: '13px', color: '#888', fontWeight: 700 }}>TRẠNG THÁI</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.map((order) => (
-                        <tr key={order.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                          <td style={{ padding: '15px 8px', fontWeight: 700, color: DARK }}>#{order.id}</td>
-                          <td style={{ padding: '15px 8px', fontSize: '14px', color: '#666' }}>{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
-                          <td style={{ padding: '15px 8px', fontWeight: 700, color: GOLD }}>{new Intl.NumberFormat('vi-VN').format(order.total_amount)}₫</td>
-                          <td style={{ padding: '15px 8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {orders.map((order) => {
+                    const priceNominal = Number(order.total_amount || 0);
+                    return (
+                      <div 
+                        key={order.id} 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          padding: '20px', 
+                          borderRadius: '16px', 
+                          backgroundColor: '#fff',
+                          border: '1px solid #f0f0f0',
+                          transition: 'all 0.3s ease',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.05)';
+                          e.currentTarget.style.borderColor = GOLD + '40';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.borderColor = '#f0f0f0';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <div style={{ 
+                            width: '48px', 
+                            height: '48px', 
+                            borderRadius: '12px', 
+                            backgroundColor: GOLD + '15', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: GOLD
+                          }}>
+                            <span style={{ fontSize: '20px' }}>☕</span>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, color: DARK, fontSize: '15px', marginBottom: '4px' }}>Đơn hàng #{order.id}</div>
+                            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>
+                              {new Date(order.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                          <div>
+                            <div style={{ fontSize: '16px', fontWeight: 800, color: GOLD }}>
+                              {new Intl.NumberFormat('vi-VN').format(Number(order.total_amount || order.amount || 0))}₫
+                            </div>
                             <span style={{ 
-                              padding: '4px 10px', 
-                              borderRadius: '4px', 
-                              fontSize: '12px', 
-                              fontWeight: 600, 
-                              color: '#fff',
-                              backgroundColor: getStatusColor(order.status)
+                              fontSize: '11px', 
+                              fontWeight: 700, 
+                              textTransform: 'uppercase',
+                              color: getStatusColor(order.status),
+                              backgroundColor: getStatusColor(order.status) + '15',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              marginTop: '5px',
+                              display: 'inline-block'
                             }}>
                               {getStatusText(order.status)}
                             </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                          <div style={{ color: '#cbd5e1' }}>
+                            <span style={{ fontSize: '18px' }}>›</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -39,13 +39,21 @@ export function Button({
   variant = 'primary',
   size = 'md',
   className = '',
+  icon,
+  children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
+  icon?: React.ReactNode;
 }): React.ReactElement {
-  return <button className={`aBtn ${variant} ${size} ${className}`.trim()} {...props} />;
+  return (
+    <button className={`aBtn ${variant} ${size} ${className}`.trim()} {...props}>
+      {icon ? <span className="aBtnIcon">{icon}</span> : null}
+      {children}
+    </button>
+  );
 }
 
 export function Input({

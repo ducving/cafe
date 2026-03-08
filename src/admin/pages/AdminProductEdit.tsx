@@ -4,6 +4,20 @@ import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui
 import { updateProductApi, fetchProductDetail } from '../../services/productsService';
 import { CategoryApi, fetchCategories } from '../../services/categoriesService';
 import { useToast } from '../../components/ToastContext';
+import {
+  ArrowLeft,
+  Save,
+  Package,
+  Tag,
+  DollarSign,
+  Layers,
+  Upload,
+  Trash2,
+  AlertCircle,
+  FileText,
+  Edit,
+  Star
+} from 'lucide-react';
 
 type ProductForm = { name: string; sku: string; price: string; stock: string; category: string };
 
@@ -15,6 +29,7 @@ export default function AdminProductEdit(): React.ReactElement {
   const fileRef = useRef<HTMLInputElement | null>(null);
   
   const [form, setForm] = useState<ProductForm>({ name: '', sku: '', price: '', stock: '', category: '' });
+  const [featured, setFeatured] = useState<0 | 1>(0);
   const [image, setImage] = useState<{ file: File | null; preview: string; keepOld: boolean }>({ file: null, preview: '', keepOld: true });
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -35,6 +50,7 @@ export default function AdminProductEdit(): React.ReactElement {
           stock: product.stock_quantity?.toString() || '0',
           category: product.category_id?.toString() || (cats.length > 0 ? cats[0].id.toString() : ''),
         });
+        setFeatured(product.featured ? 1 : 0);
         if (product.image) {
           setImage({ file: null, preview: product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/doan/${product.image}`, keepOld: true });
         }
@@ -126,6 +142,7 @@ export default function AdminProductEdit(): React.ReactElement {
         price,
         sku,
         stock_quantity: stock,
+        featured,
         ...(finalImageUrl !== undefined ? { image: finalImageUrl } : {}),
       });
       showToast('Cập nhật sản phẩm thành công', 'success');
@@ -159,114 +176,217 @@ export default function AdminProductEdit(): React.ReactElement {
       </div>
 
       <div className="adminCol12">
-        <Card>
-          <form id="editProductForm" onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Tên sản phẩm">
-                <Input
-                  autoFocus
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="VD: Cà phê sữa"
-                />
-              </Field>
-              <Field label="SKU">
-                <Input
-                  value={form.sku}
-                  onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
-                  placeholder="VD: CF-SUA"
-                />
-              </Field>
-            </div>
-
-            <Field label="Ảnh sản phẩm" hint="JPG/PNG. Bỏ trống nếu không muốn đổi ảnh.">
-              <div className="aUploadRow">
-                <input
-                  ref={fileRef}
-                  id={inputId}
-                  className="aFileInput"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFromFile(e.target.files?.[0] || null)}
-                />
-
-                <div
-                  className={`aUploadBox ${dragOver ? 'isDragOver' : ''}`.trim()}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
-                  }}
-                  onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
-                  onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOver(false);
-                    const file = e.dataTransfer.files?.[0] || null;
-                    if (file) setImageFromFile(file);
-                  }}
-                >
-                  {image.preview ? (
-                    <div className="aUploadPreview">
-                      <img src={image.preview} alt="preview" className="aUploadImg" style={{ objectFit: 'contain' }} />
-                      <div className="aUploadMeta">
-                        <div className="aUploadName">{image.file?.name || 'Ảnh hiện tại'}</div>
-                        <div className="aUploadHint">Bấm để đổi ảnh hoặc kéo/thả ảnh khác</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="aUploadEmpty">
-                      <div className="aUploadIcon">⬆</div>
-                      <div className="aUploadTitle">Kéo & thả ảnh vào đây</div>
-                      <div className="aUploadHint">hoặc bấm để tải ảnh lên</div>
-                    </div>
-                  )}
+        <Card style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <form id="editProductForm" onSubmit={onSubmit} style={{ display: 'grid', gap: 24 }}>
+            
+            {/* Section 1: Thông tin cơ bản */}
+            <div>
+              <div className="formSection">
+                <div className="formSectionTitle">
+                  <FileText size={20} className="text-primary" />
+                  Thông tin cơ bản
                 </div>
-
-                {image.preview ? (
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    onClick={() => setImageFromFile(null)}
-                    title="Xóa ảnh"
-                  >
-                    Xóa
-                  </Button>
-                ) : null}
+                <p className="formSectionSub">Tên sản phẩm và mã SKU định danh.</p>
               </div>
-            </Field>
-
-            <Field label="Danh mục">
-              <Select
-                value={form.category}
-                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-              >
-                <option value="">-- Chọn danh mục --</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Giá (đ)">
-                <Input type="number" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} placeholder="29000" />
-              </Field>
-              <Field label="Tồn kho">
-                <Input type="number" value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} placeholder="50" />
-              </Field>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Field label="Tên sản phẩm">
+                  <div style={{ position: 'relative' }}>
+                    <Package size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                    <Input
+                      autoFocus
+                      value={form.name}
+                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="VD: Cà phê sữa đá"
+                      style={{ paddingLeft: 38 }}
+                    />
+                  </div>
+                </Field>
+                <Field label="Mã SKU">
+                  <div style={{ position: 'relative' }}>
+                    <Tag size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                    <Input
+                      value={form.sku}
+                      onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
+                      placeholder="VD: CF-SUA-DA"
+                      style={{ paddingLeft: 38 }}
+                    />
+                  </div>
+                </Field>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-              <Button variant="ghost" type="button" onClick={() => navigate('/admin/products')}>
-                Hủy
+            {/* Section 2: Phân loại & Hình ảnh */}
+            <div>
+              <div className="formSection">
+                <div className="formSectionTitle">
+                  <Layers size={20} className="text-primary" />
+                  Phân loại & Hình ảnh
+                </div>
+                <p className="formSectionSub">Chọn danh mục và cập nhật ảnh sản phẩm.</p>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Field label="Danh mục">
+                  <div style={{ position: 'relative' }}>
+                    <Layers size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                    <Select
+                      value={form.category}
+                      onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                      style={{ paddingLeft: 38 }}
+                    >
+                      <option value="">-- Chọn danh mục --</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </Field>
+                
+                <Field label="Ảnh sản phẩm">
+                  <div className="aUploadRow">
+                    <input
+                      ref={fileRef}
+                      id={inputId}
+                      className="aFileInput"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setImageFromFile(e.target.files?.[0] || null)}
+                    />
+
+                    <div
+                      className={`aUploadBox ${dragOver ? 'isDragOver' : ''}`.trim()}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileRef.current?.click()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
+                      }}
+                      onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOver(false);
+                        const file = e.dataTransfer.files?.[0] || null;
+                        if (file) setImageFromFile(file);
+                      }}
+                      style={{ padding: '20px' }}
+                    >
+                      {image.preview ? (
+                        <div className="aUploadPreview">
+                          <img src={image.preview} alt="preview" className="aUploadImg" style={{ width: 60, height: 60 }} />
+                          <div className="aUploadMeta">
+                            <div className="aUploadName" style={{ fontSize: 13 }}>{image.file?.name || 'Ảnh đang sử dụng'}</div>
+                            <div className="aUploadHint" style={{ fontSize: 11 }}>Bấm hoặc kéo thả để đổi</div>
+                          </div>
+                          <Button variant="ghost" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setImageFromFile(null); }} icon={<Trash2 size={14} />} />
+                        </div>
+                      ) : (
+                        <div className="aUploadEmpty" style={{ padding: '10px 0' }}>
+                          <Upload size={24} style={{ color: '#94a3b8', marginBottom: 4 }} />
+                          <div className="aUploadTitle" style={{ fontSize: 14 }}>Tải ảnh mới</div>
+                          <div className="aUploadHint" style={{ fontSize: 12 }}>Bấm hoặc kéo thả</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* Section 3: Giá & Tồn kho */}
+            <div>
+              <div className="formSection">
+                <div className="formSectionTitle">
+                  <DollarSign size={20} className="text-primary" />
+                  Giá & Tồn kho
+                </div>
+                <p className="formSectionSub">Cập nhật số liệu kinh doanh hiện tại.</p>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Field label="Giá bán (đ)">
+                  <div style={{ position: 'relative' }}>
+                    <DollarSign size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                    <Input 
+                      type="number" 
+                      value={form.price} 
+                      onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} 
+                      placeholder="VD: 29000"
+                      style={{ paddingLeft: 38 }}
+                    />
+                  </div>
+                </Field>
+                <Field label="Số lượng tồn kho">
+                  <div style={{ position: 'relative' }}>
+                    <AlertCircle size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                    <Input 
+                      type="number" 
+                      value={form.stock} 
+                      onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} 
+                      placeholder="VD: 50"
+                      style={{ paddingLeft: 38 }}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* Section 4: Nổi bật */}
+            <div>
+              <div className="formSection">
+                <div className="formSectionTitle">
+                  <Star size={20} className="text-primary" />
+                  Sản phẩm nổi bật
+                </div>
+                <p className="formSectionSub">Sản phẩm nổi bật sẽ được hiển thị ở trang chủ và khu vực đề xuất.</p>
+              </div>
+
+              <div
+                onClick={() => setFeatured((f) => (f === 1 ? 0 : 1))}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '16px',
+                  padding: '16px 20px', borderRadius: '12px', cursor: 'pointer',
+                  border: `2px solid ${featured === 1 ? '#c8a96e' : '#e2e8f0'}`,
+                  backgroundColor: featured === 1 ? '#fffbf0' : '#f8fafc',
+                  transition: 'all 0.2s', userSelect: 'none',
+                }}
+              >
+                <div style={{
+                  width: '44px', height: '26px', borderRadius: '13px',
+                  backgroundColor: featured === 1 ? '#c8a96e' : '#cbd5e1',
+                  position: 'relative', transition: 'background-color 0.25s', flexShrink: 0
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '3px',
+                    left: featured === 1 ? '21px' : '3px',
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    backgroundColor: '#fff', transition: 'left 0.25s',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: featured === 1 ? '#92680a' : '#334155' }}>
+                    {featured === 1 ? '⭐ Sản phẩm nổi bật' : 'Sản phẩm thường'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                    {featured === 1
+                      ? 'Hiển thị ở trang chủ, khu vực đề xuất'
+                      : 'Chỉ hiện trong danh sách sản phẩm'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+
+              <Button variant="ghost" type="button" onClick={() => navigate('/admin/products')} icon={<ArrowLeft size={18} />}>
+                Hủy bỏ
               </Button>
-              <Button variant="primary" type="submit" disabled={saving}>
+              <Button variant="primary" type="submit" disabled={saving} icon={<Save size={18} />}>
                 {saving ? 'Đang cập nhật...' : 'Cập nhật sản phẩm'}
               </Button>
             </div>

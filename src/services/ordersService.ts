@@ -19,6 +19,13 @@ export interface OrderResponse {
   success: boolean;
   message?: string;
   data?: any;
+  orders?: any[];
+  pagination?: {
+    current_page: number;
+    limit: number;
+    total_items: number;
+    total_pages: number;
+  };
 }
 
 const API_BASE = `${API_BASE_URL}/orders.php`;
@@ -48,11 +55,11 @@ export const createOrder = async (orderData: CreateOrderInput): Promise<OrderRes
   return response.json();
 };
 
-export const fetchMyOrders = async (): Promise<OrderResponse> => {
+export const fetchMyOrders = async (page: number = 1): Promise<OrderResponse> => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Bạn cần đăng nhập để xem đơn hàng');
 
-  const response = await fetch(API_BASE, {
+  const response = await fetch(`${API_BASE}?page=${page}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -66,7 +73,7 @@ export const fetchMyOrders = async (): Promise<OrderResponse> => {
   return response.json();
 };
 
-export const fetchAllOrders = async (params?: { status?: string; search?: string }): Promise<OrderResponse> => {
+export const fetchAllOrders = async (params?: { status?: string; search?: string; page?: number }): Promise<OrderResponse> => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Bạn cần đăng nhập với quyền Admin');
 
@@ -74,6 +81,7 @@ export const fetchAllOrders = async (params?: { status?: string; search?: string
   const query = new URLSearchParams();
   if (params?.status && params.status !== 'all') query.append('status', params.status);
   if (params?.search) query.append('search', params.search);
+  if (params?.page) query.append('page', params.page.toString());
   
   const queryString = query.toString();
   if (queryString) url += `?${queryString}`;

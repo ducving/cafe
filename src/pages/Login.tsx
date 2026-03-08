@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginAPI } from '../services/api';
+import { loginAPI, googleLoginAPI } from '../services/api';
 import { useToast } from '../components/ToastContext';
+import { GoogleLogin } from '@react-oauth/google';
+import { Mail, Lock, LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import './Login.css';
+import loginBg from '../assets/images/login-bg.png';
 
 type AnyObject = Record<string, any>;
 
@@ -26,13 +30,11 @@ function normalizeLoginPayload(payload: any): { token?: string; user?: any } {
     p.data?.access_token ||
     p.data?.jwt;
 
-  // Common patterns: { user: {...} }, { data: { user: {...} } }, or user fields at top-level.
   let user: any = p.user || p.data?.user || p.account || p.data?.account || null;
   if (!user && (p.role || p.type || p.user_type || p.email || p.name || p.id)) {
     user = p;
   }
 
-  // Ensure role is present if API returns it at top-level
   if (user && typeof user === 'object' && !user.role && p.role) {
     user = { ...user, role: p.role };
   }
@@ -43,10 +45,34 @@ function normalizeLoginPayload(payload: any): { token?: string; user?: any } {
 export default function Login(): React.ReactElement {
   const [identifier, setIdentifier] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError('');
+    setLoading(true);
+
+    const result = await googleLoginAPI(credentialResponse.credential);
+
+    if (result.success) {
+      const { token, user } = normalizeLoginPayload(result.data);
+
+      if (token) localStorage.setItem('token', token);
+      if (user) localStorage.setItem('user', JSON.stringify(user));
+
+      const nextPath = isAdminUser(user) ? '/admin' : '/';
+      showToast('Đăng nhập Google thành công', 'success');
+      navigate(nextPath);
+    } else {
+      setError(result.error || 'Đăng nhập Google thất bại');
+      showToast(result.error || 'Đăng nhập Google thất bại', 'error');
+    }
+
+    setLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -71,111 +97,112 @@ export default function Login(): React.ReactElement {
       showToast('Đăng nhập thành công', 'success');
       navigate(nextPath);
     } else {
-      setError(result.error);
+      setError(result.error || 'Thông tin đăng nhập không chính xác');
     }
 
     setLoading(false);
   };
 
-  const containerStyle: React.CSSProperties = {
-    maxWidth: '400px',
-    margin: '50px auto',
-    padding: '30px',
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-  };
-
-  const titleStyle: React.CSSProperties = {
-    textAlign: 'center',
-    color: '#2c3e50',
-    marginBottom: '30px',
-    fontSize: '2em',
-  };
-
-  const formGroupStyle: React.CSSProperties = { marginBottom: '20px' };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#555',
-    fontWeight: 500,
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
-    fontSize: '16px',
-    boxSizing: 'border-box',
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: loading ? 'not-allowed' : 'pointer',
-    opacity: loading ? 0.7 : 1,
-    transition: 'background-color 0.3s',
-  };
-
-  const errorStyle: React.CSSProperties = {
-    color: '#e74c3c',
-    marginBottom: '15px',
-    padding: '10px',
-    backgroundColor: '#ffeaea',
-    borderRadius: '5px',
-    fontSize: '14px',
-  };
-
   return (
-    <div style={containerStyle}>
-      <h1 style={titleStyle}>Đăng Nhập</h1>
-
-      {error && <div style={errorStyle}>{error}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <div style={formGroupStyle}>
-          <label style={labelStyle}>Email / Tên đăng nhập:</label>
-          <input
-            type="text"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            style={inputStyle}
-            placeholder="Nhập email hoặc tên đăng nhập"
-            disabled={loading}
-          />
+    <div className="login-page" style={{ backgroundImage: `url(${loginBg})` }}>
+      <div className="login-card">
+        <div className="login-header">
+          <h1>Chào Mừng Trở Lại</h1>
+          <p>Đăng nhập để tiếp tục với The Cafe</p>
         </div>
 
-        <div style={formGroupStyle}>
-          <label style={labelStyle}>Mật khẩu:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            placeholder="Nhập mật khẩu"
-            disabled={loading}
-          />
-        </div>
+        {error && (
+          <div className="error-message">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
 
-        <button type="submit" style={buttonStyle} disabled={loading}>
-          {loading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
-        </button>
+        <form className="login-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="identifier">Email hoặc Tên đăng nhập</label>
+            <div className="input-wrapper">
+              <Mail size={20} />
+              <input
+                id="identifier"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="you@example.com"
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+          </div>
 
-        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#718096' }}>
-          Chưa có tài khoản?{' '}
-          <Link to="/register" style={{ color: '#3182ce', fontWeight: 600, textDecoration: 'none' }}>
-            Đăng ký ngay
-          </Link>
-        </div>
-      </form>
+          <div className="form-group">
+            <label htmlFor="password">Mật khẩu</label>
+            <div className="input-wrapper">
+              <Lock size={20} />
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#636e72',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? (
+              'Đang xác thực...'
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <LogIn size={20} /> Đăng Nhập
+              </span>
+            )}
+          </button>
+
+          <div className="divider">
+            
+          </div>
+
+          <div className="google-wrapper">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                setError('Đăng nhập Google thất bại');
+                showToast('Lỗi xác thực Google', 'error');
+              }}
+              useOneTap
+              theme="outline"
+              shape="pill"
+              text="signin_with"
+              width="354px"
+            />
+          </div>
+
+          <div className="footer-links">
+            Chưa có tài khoản?{' '}
+            <Link to="/register">Đăng ký ngay</Link>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

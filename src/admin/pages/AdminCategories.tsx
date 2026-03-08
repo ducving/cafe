@@ -3,6 +3,8 @@ import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Toolbar } fr
 import { CategoryApi, createCategory, deleteCategoryApi, fetchCategories, updateCategory } from '../../services/categoriesService';
 import { getImageUrl } from '../../services/config';
 import { useToast } from '../../components/ToastContext';
+import { exportToExcel, importFromExcel } from '../utils/ExcelUtils';
+import { Download, Upload, Plus, Edit, Trash2, Search, RefreshCw, Layers, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 
 type Category = { id: number; name: string; slug: string; image?: string };
 
@@ -24,6 +26,10 @@ export default function AdminCategories(): React.ReactElement {
   const [confirm, setConfirm] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Pagination
+  const PAGE_SIZE = 5;
+  const [page, setPage] = useState(1);
   const [image, setImage] = useState<{ file: File | null; preview: string; keep?: string }>({
     file: null,
     preview: '',
@@ -44,6 +50,16 @@ export default function AdminCategories(): React.ReactElement {
     if (!q) return categories;
     return categories.filter((c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q));
   }, [categories, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset to page 1 when filter changes
+  const prevQuery = React.useRef(query);
+  if (prevQuery.current !== query) {
+    prevQuery.current = query;
+    if (page !== 1) setPage(1);
+  }
 
   const resetForm = () => {
     setForm({ name: '', slug: '' });
@@ -166,6 +182,68 @@ export default function AdminCategories(): React.ReactElement {
     }
   };
 
+  const handleExport = () => {
+    const dataToExport = categories.map(c => ({
+      'ID': c.id,
+      'Tên danh mục': c.name,
+      'Slug': c.slug
+    }));
+    exportToExcel(dataToExport, 'Danh_muc_HaluCafe', 'Categories');
+    showToast('Xuất Excel thành công', 'success');
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const data = await importFromExcel(file);
+      if (!Array.isArray(data) || data.length === 0) {
+        showToast('File Excel không có dữ liệu hoặc không đúng định dạng', 'error');
+        return;
+      }
+
+      setSaving(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const row of data) {
+        const name = row['Tên danh mục'] || row['name'] || row['Name'];
+        const slug = row['Slug'] || row['slug'] || (name ? name.toLowerCase().replace(/ /g, '-') : null);
+
+        if (name && slug) {
+          try {
+            const created = await createCategory({
+              name,
+              slug,
+              status: 'active',
+              sort_order: 1
+            });
+            if (created) successCount++;
+          } catch (err) {
+            failCount++;
+          }
+        }
+      }
+
+      // Refresh list
+      const updatedList = await fetchCategories();
+      setCategories(updatedList.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        image: c.image
+      })));
+
+      showToast(`Nhập dữ liệu thành công: ${successCount} mục. Thất bại: ${failCount} mục.`, successCount > 0 ? 'success' : 'error');
+    } catch (err) {
+      showToast('Lỗi khi đọc file Excel', 'error');
+    } finally {
+      setSaving(false);
+      e.target.value = ''; // Reset input
+    }
+  };
+
   return (
     <div className="adminGrid">
       <div className="adminCol12">
@@ -174,10 +252,32 @@ export default function AdminCategories(): React.ReactElement {
           subtitle="Tạo và quản lý danh mục sản phẩm."
           right={
             <>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm danh mục..." style={{ minWidth: 260 }} />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={18} style={{ position: 'absolute', left: 12, color: '#94a3b8' }} />
+                <Input 
+                  value={query} 
+                  onChange={(e) => setQuery(e.target.value)} 
+                  placeholder="Tìm danh mục..." 
+                  style={{ minWidth: 260, paddingLeft: 38 }} 
+                />
+              </div>
+              <Button variant="ghost" type="button" onClick={handleExport} icon={<Download size={18} />}>
+                Xuất Excel
+              </Button>
+              <Button 
+                variant="ghost" 
+                type="button" 
+                onClick={() => document.getElementById('excel-import-cat')?.click()} 
+                icon={<Upload size={18} />}
+                disabled={saving}
+              >
+                Nhập Excel
+                <input id="excel-import-cat" type="file" accept=".xlsx, .xls" hidden onChange={handleImport} />
+              </Button>
               <Button
-                variant="ghost"
+                variant="primary"
                 type="button"
+                icon={<Plus size={18} />}
                 onClick={() => {
                   resetForm();
                   (document.getElementById('catName') as HTMLInputElement | null)?.focus?.();
@@ -192,19 +292,29 @@ export default function AdminCategories(): React.ReactElement {
 
       <div className="adminCol4">
         <Card>
-          <div style={{ fontWeight: 950, color: '#0f172a', marginBottom: 12 }}>{editingId ? 'Sửa danh mục' : 'Tạo danh mục'}</div>
+          <div className="formSection">
+            <div className="formSectionTitle">
+              {editingId ? <Edit size={20} className="text-primary" /> : <Plus size={20} className="text-primary" />}
+              {editingId ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
+            </div>
+            <p className="formSectionSub">Thông tin cơ bản về nhóm sản phẩm.</p>
+          </div>
 
-          <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-            <Field label="Tên danh mục" hint="VD: Cà phê / Trà / Bánh">
-              <Input
-                id="catName"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="Nhập tên danh mục"
-              />
+          <form onSubmit={onSubmit} style={{ display: 'grid', gap: 16 }}>
+            <Field label="Tên danh mục">
+              <div style={{ position: 'relative' }}>
+                <Layers size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                <Input
+                  id="catName"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="VD: Cà phê / Trà / Bánh"
+                  style={{ paddingLeft: 38 }}
+                />
+              </div>
             </Field>
 
-            <Field label="Ảnh danh mục" hint="JPG/PNG (demo)">
+            <Field label="Ảnh đại diện">
               <div className="aUploadRow">
                 <input
                   ref={fileRef}
@@ -225,22 +335,18 @@ export default function AdminCategories(): React.ReactElement {
                   }}
                   onDragEnter={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     setDragOver(true);
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     setDragOver(true);
                   }}
                   onDragLeave={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     setDragOver(false);
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     setDragOver(false);
                     const file = e.dataTransfer.files?.[0] || null;
                     if (file) setImageFromFile(file);
@@ -250,23 +356,23 @@ export default function AdminCategories(): React.ReactElement {
                     <div className="aUploadPreview">
                       <img src={image.preview} alt="preview" className="aUploadImg" />
                       <div className="aUploadMeta">
-                        <div className="aUploadName">{image.file?.name || 'Ảnh danh mục'}</div>
-                        <div className="aUploadHint">Bấm để đổi ảnh hoặc kéo/thả ảnh khác</div>
+                        <div className="aUploadName">{image.file?.name || 'Ảnh đã chọn'}</div>
+                        <div className="aUploadHint">Bấm để thay đổi</div>
                       </div>
                     </div>
                   ) : image.keep ? (
                     <div className="aUploadPreview">
                       <img src={getImageUrl(image.keep)} alt="preview" className="aUploadImg" />
                       <div className="aUploadMeta">
-                        <div className="aUploadName">Ảnh danh mục</div>
-                        <div className="aUploadHint">Bấm để đổi ảnh hoặc kéo/thả ảnh khác</div>
+                        <div className="aUploadName">Ảnh hiện tại</div>
+                        <div className="aUploadHint">Duy trì hoặc bấm để đổi</div>
                       </div>
                     </div>
                   ) : (
                     <div className="aUploadEmpty">
-                      <div className="aUploadIcon">⬆</div>
-                      <div className="aUploadTitle">Kéo & thả ảnh vào đây</div>
-                      <div className="aUploadHint">hoặc bấm để tải ảnh lên</div>
+                      <div className="aUploadIcon"><Upload size={32} /></div>
+                      <div className="aUploadTitle">Tải lên hình ảnh</div>
+                      <div className="aUploadHint">Kéo thả hoặc bấm để chọn</div>
                     </div>
                   )}
                 </div>
@@ -274,24 +380,28 @@ export default function AdminCategories(): React.ReactElement {
                 {(image.preview || image.keep) ? (
                   <Button
                     variant="ghost"
+                    size="sm"
                     type="button"
-                    onClick={() => {
-                      setImage({ file: null, preview: '', keep: undefined });
-                    }}
-                    title="Xóa ảnh"
+                    onClick={() => setImage({ file: null, preview: '', keep: undefined })}
+                    icon={<Trash2 size={14} />}
+                    style={{ color: '#ef4444' }}
                   >
-                    Xóa ảnh
+                    Gỡ bỏ ảnh
                   </Button>
                 ) : null}
               </div>
             </Field>
 
-            <Field label="Slug" hint="Dùng cho URL">
-              <Input
-                value={form.slug}
-                onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="vd: ca-phe"
-              />
+            <Field label="Đường dẫn tĩnh (Slug)">
+              <div style={{ position: 'relative' }}>
+                <LinkIcon size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                <Input
+                  value={form.slug}
+                  onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
+                  placeholder="vd: ca-phe"
+                  style={{ paddingLeft: 38 }}
+                />
+              </div>
             </Field>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <Button variant="ghost" type="button" onClick={resetForm}>
@@ -337,7 +447,7 @@ export default function AdminCategories(): React.ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
+                {pagedItems.map((c) => (
                   <tr key={c.id}>
                     <td>
                       {c.image ? <img src={getImageUrl(c.image)} alt={c.name} className="aThumb" /> : <div className="aThumbPlaceholder" />}
@@ -353,15 +463,14 @@ export default function AdminCategories(): React.ReactElement {
                           onClick={() => {
                             setEditingId(c.id);
                             setForm({ name: c.name, slug: c.slug });
-                            // load existing image for editing (chỉ lưu URL từ API)
                             setImage({ file: null, preview: '', keep: c.image });
                             (document.getElementById('catName') as HTMLInputElement | null)?.focus?.();
                           }}
                         >
-                          ✎
+                          <Edit size={16} />
                         </button>
                         <button className="aIconBtn danger" type="button" title="Xóa" onClick={() => setConfirm({ open: true, id: c.id })}>
-                          🗑
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -369,6 +478,38 @@ export default function AdminCategories(): React.ReactElement {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '14px',
+            }}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Trước
+              </Button>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155' }}>
+                Trang <span style={{ color: '#c8a96e' }}>{page}</span> / {totalPages}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Sau
+              </Button>
+            </div>
           )}
         </Card>
       </div>

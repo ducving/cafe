@@ -185,7 +185,7 @@ export default function Cart(): React.ReactElement {
             Có vẻ như bạn chưa chọn món nào. Quay lại menu xem nhé!
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/products')}
             style={{
               padding: '16px 40px',
               backgroundColor: '#dc2626',

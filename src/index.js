@@ -7,15 +7,20 @@ import { CartProvider } from './user/CartContext';
 import reportWebVitals from './reportWebVitals';
 
 import { ToastProvider } from './components/ToastContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = "214106314041-bjhdisf77553d2vg3l367c4j7k01317i.apps.googleusercontent.com";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ToastProvider>
-      <CartProvider>
-        <RouterProvider router={router} />
-      </CartProvider>
-    </ToastProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <ToastProvider>
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
+      </ToastProvider>
+    </GoogleOAuthProvider>
   </React.StrictMode>
 );
 

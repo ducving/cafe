@@ -33,29 +33,39 @@ export default function AdminOrders(): React.ReactElement {
   const [error, setError] = useState('');
   const [query, setQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [confirm, setConfirm] = useState<{ open: boolean; id: string | null; next: OrderStatus | null }>({
     open: false,
     id: null,
     next: null,
   });
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (p: number = 1) => {
     setLoading(true);
     try {
       const response = await fetchAllOrders({
         status: statusFilter,
-        search: query
+        search: query,
+        page: p
       });
       const orderList = response.data || (response as any).orders;
       if (response.success && Array.isArray(orderList)) {
         const mappedOrders: Order[] = orderList.map((item: any) => ({
           id: String(item.id),
-          customer: item.full_name || 'Khách hàng',
+          customer: item.full_name || item.user_name || 'Khách hàng',
           total: parseFloat(item.total_amount) || 0,
           status: item.status as OrderStatus,
           createdAt: item.created_at || item.createdAt || '',
         }));
         setOrders(mappedOrders);
+        if (response.pagination) {
+          setPage(response.pagination.current_page);
+          setTotalPages(response.pagination.total_pages);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Lỗi khi tải đơn hàng');
@@ -66,7 +76,7 @@ export default function AdminOrders(): React.ReactElement {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadOrders();
+      loadOrders(1);
     }, 500); // Debounce search
     return () => clearTimeout(timer);
   }, [loadOrders]);
@@ -187,6 +197,38 @@ export default function AdminOrders(): React.ReactElement {
               )}
             </tbody>
           </table>
+
+          {/* Admin Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ 
+              padding: '20px', 
+              borderTop: '1px solid #f1f5f9',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '15px' 
+            }}>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                disabled={page === 1} 
+                onClick={() => loadOrders(page - 1)}
+              >
+                Trước
+              </Button>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#334155' }}>
+                Trang <span style={{ color: '#c8a96e' }}>{page}</span> / {totalPages}
+              </div>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                disabled={page === totalPages} 
+                onClick={() => loadOrders(page + 1)}
+              >
+                Sau
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
 

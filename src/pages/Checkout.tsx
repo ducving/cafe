@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../user/CartContext';
 import { createOrder } from '../services/ordersService';
+import { fetchPoints, calculatePoints } from '../services/pointsService';
 
 export default function Checkout(): React.ReactElement {
   const navigate = useNavigate();
@@ -20,6 +21,13 @@ export default function Checkout(): React.ReactElement {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Points state
+  const [myPoints, setMyPoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [willEarn, setWillEarn] = useState(0);
+  const [redeemRate] = useState(1000); // 1 điểm = 1.000đ
+
   // Auto-fill user info if logged in
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -36,7 +44,25 @@ export default function Checkout(): React.ReactElement {
         console.error('Error parsing user data', e);
       }
     }
+    // Load points
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchPoints().then(res => { if (res.success) setMyPoints(res.points); }).catch(() => {});
+    }
   }, []);
+
+  // Recalculate when usePoints changes
+  useEffect(() => {
+    if (myPoints === 0) return;
+    calculatePoints(totalPrice, usePoints)
+      .then(res => {
+        if (res.success) {
+          setDiscount(res.discount);
+          setWillEarn(res.will_earn);
+        }
+      })
+      .catch(() => {});
+  }, [usePoints, totalPrice, myPoints]);
 
   // If cart is empty, redirect back to cart or home
   useEffect(() => {
@@ -52,23 +78,17 @@ export default function Checkout(): React.ReactElement {
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (items.length === 0) return;
-    
     setLoading(true);
     setError('');
-
     try {
-      const orderItems = items.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity
-      }));
-
+      const orderItems = items.map(item => ({ product_id: item.id, quantity: item.quantity }));
       const response = await createOrder({
         ...formData,
         items: orderItems,
-      });
-
+        points_redeemed: usePoints,
+        discount_amount: discount,
+      } as any);
       if (response.success) {
         const orderId = response.data?.id;
         clear();
@@ -275,16 +295,181 @@ export default function Checkout(): React.ReactElement {
             <span>Phí giao hàng</span>
             <span style={{ color: '#16a34a', fontWeight: 600 }}>Miễn phí</span>
           </div>
-          
-          {error && (
-            <div style={{ color: '#b91c1c', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
-              {error}
+
+          {/* POINTS REDEMPTION - PREMIUM DESIGN */}
+          {myPoints > 0 && (
+            <div style={{
+              marginTop: '20px', 
+              padding: '24px', 
+              borderRadius: '20px',
+              background: 'linear-gradient(145deg, #ffffff 0%, #fffdf9 100%)',
+              border: '1.5px solid #e5c97a',
+              boxShadow: '0 10px 25px -5px rgba(200, 169, 110, 0.15)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Trang trí góc */}
+              <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '60px', height: '60px', background: '#c8a96e10', borderRadius: '50%' }} />
+              
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#92680a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '20px' }}>🌟</span> Ưu đãi tích lũy
+                    </h4>
+                    <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: '#a1824a', fontWeight: 500 }}>
+                      Tiết kiệm nhiều hơn với điểm Halu
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#c8a96e' }}>{myPoints.toLocaleString('vi-VN')}</div>
+                    <div style={{ fontSize: '10px', color: '#c8a96e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Điểm khả dụng</div>
+                  </div>
+                </div>
+
+                {/* Slider bar custom */}
+                <div style={{ marginBottom: '24px' }}>
+                  <input
+                    type="range" min={0} max={myPoints}
+                    value={usePoints}
+                    onChange={e => setUsePoints(Number(e.target.value))}
+                    style={{ 
+                      width: '100%', 
+                      accentColor: '#c8a96e', 
+                      height: '6px', 
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#d4b483', fontWeight: 600 }}>
+                    <span>0đ</span>
+                    <span>Dùng {usePoints} điểm</span>
+                    <span>-{new Intl.NumberFormat('vi-VN').format(myPoints * 1000)}đ</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      max={myPoints}
+                      value={usePoints || ''}
+                      placeholder="Nhập số điểm..."
+                      onChange={e => {
+                        const val = Math.min(Math.max(0, Number(e.target.value)), myPoints);
+                        setUsePoints(val);
+                      }}
+                      style={{
+                        width: '100%', 
+                        padding: '12px 16px', 
+                        paddingRight: '45px',
+                        borderRadius: '12px',
+                        border: '1.5px solid #f0e6cc', 
+                        fontSize: '15px', 
+                        fontWeight: 700,
+                        color: '#92680a', 
+                        backgroundColor: '#fff', 
+                        boxSizing: 'border-box', 
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                      }}
+                    />
+                    <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', fontWeight: 700, color: '#c8a96e', pointerEvents: 'none' }}>ĐIỂM</span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setUsePoints(usePoints === myPoints ? 0 : myPoints)}
+                    style={{
+                      height: '46px',
+                      padding: '0 16px', 
+                      borderRadius: '12px',
+                      border: 'none',
+                      backgroundColor: usePoints === myPoints ? '#92680a' : '#f0e6cc',
+                      color: usePoints === myPoints ? '#fff' : '#92680a',
+                      fontSize: '13px', 
+                      fontWeight: 800, 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {usePoints === myPoints ? (
+                      <><span>✓</span> Đã dùng</>
+                    ) : (
+                      'Tối đa'
+                    )}
+                  </button>
+                </div>
+
+                {/* Savings Summary Label */}
+                {usePoints > 0 && (
+                  <div style={{ 
+                    marginTop: '20px', 
+                    padding: '14px', 
+                    backgroundColor: 'rgba(22, 163, 74, 0.05)', 
+                    borderRadius: '12px',
+                    border: '1px dashed rgba(22, 163, 74, 0.3)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    animation: 'fadeInUp 0.3s ease-out'
+                  }}>
+                    <span style={{ fontSize: '13px', color: '#15803d', fontWeight: 600 }}>Tiết kiệm được:</span>
+                    <span style={{ fontSize: '15px', color: '#16a34a', fontWeight: 900 }}>
+                      -{new Intl.NumberFormat('vi-VN').format(discount)}đ
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          <div style={totalRow}>
-            <span>Tổng cộng</span>
-            <span>{new Intl.NumberFormat('vi-VN').format(totalPrice)}đ</span>
+          <div style={{ marginTop: '24px' }}>
+            {discount > 0 && (
+              <div style={summaryRow}>
+                <span style={{ color: '#16a34a', fontWeight: 600 }}>Giảm giá (Ưu đãi tích lũy)</span>
+                <span style={{ color: '#16a34a', fontWeight: 700 }}>-{new Intl.NumberFormat('vi-VN').format(discount)}đ</span>
+              </div>
+            )}
+            
+            {error && (
+              <div style={{ color: '#ef4444', padding: '14px', backgroundColor: '#fef2f2', borderRadius: '12px', fontSize: '13px', marginBottom: '16px', border: '1px solid #fee2e2', fontWeight: 500 }}>
+                {error}
+              </div>
+            )}
+
+            <div style={totalRow}>
+              <span>Tổng thanh toán</span>
+              <span style={{ fontSize: '24px', color: '#dc2626' }}>{new Intl.NumberFormat('vi-VN').format(Math.max(0, totalPrice - discount))}đ</span>
+            </div>
+
+            {willEarn > 0 && (
+              <div style={{ 
+                marginTop: '16px', 
+                padding: '16px', 
+                borderRadius: '16px', 
+                backgroundColor: '#ffffff', 
+                border: '1.5px solid #dcfce7', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px',
+                boxShadow: '0 4px 10px rgba(22, 163, 74, 0.05)'
+              }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                  🎁
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: '#16a34a' }}>Nhận thêm +{willEarn} điểm</div>
+                  <div style={{ fontSize: '11px', color: '#65a30d', fontWeight: 500 }}>Được cộng sau khi hoàn tất đơn hàng này</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <button

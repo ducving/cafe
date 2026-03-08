@@ -16,8 +16,8 @@ import Checkout from './pages/Checkout';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import News from './pages/News';
-import NewsDetail from './pages/NewsDetail';
 import Profile from './pages/Profile';
+import OrderHistory from './pages/OrderHistory';
 import AttendanceStandalone from './pages/AttendanceStandalone';
 
 // Single place to manage routes (like your router.tsx screenshot)
@@ -35,8 +35,8 @@ export const router = createBrowserRouter([
       { path: 'contact', element: <Contact /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'news', element: <News /> },
-      { path: 'news/:id', element: <NewsDetail /> },
       { path: 'profile', element: <Profile /> },
+      { path: 'order-history', element: <OrderHistory /> },
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       { path: 'cart', element: <Cart /> },

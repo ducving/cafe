@@ -80,7 +80,7 @@ export default function AdminEmployeeAttendance(): React.ReactElement {
     document.body.removeChild(link);
   };
 
-  const totalWage = history.reduce((sum, item) => sum + (item.daily_wage || 0), 0);
+  const totalWage = history.reduce((sum, item) => sum + (Number(item.daily_wage) || 0), 0);
   const totalHours = history.reduce((sum, item) => sum + (Number(item.total_hours) || 0), 0);
 
   return (

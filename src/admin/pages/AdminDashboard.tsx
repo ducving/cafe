@@ -1,59 +1,104 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Badge, Button, Card, PageHeader } from '../components/ui';
-import { fetchAllOrders } from '../../services/ordersService';
-import { fetchProducts } from '../../services/productsService';
+import { Badge, Button, Card } from '../components/ui';
+import { fetchDashboardStats } from '../../services/api';
+import { 
+  TrendingUp, 
+  ShoppingBag, 
+  Users, 
+  DollarSign, 
+  AlertCircle, 
+  Clock, 
+  CheckCircle2, 
+  ChevronRight,
+  Package,
+  ArrowUpRight,
+  ArrowDownRight,
+  Download,
+  Plus
+} from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 function formatVnd(n: number): string {
   return new Intl.NumberFormat('vi-VN').format(n) + 'đ';
 }
+
+const DASHBOARD_CHART_DATA = [
+  { name: 'Thứ 2', revenue: 1200000, orders: 15 },
+  { name: 'Thứ 3', revenue: 1800000, orders: 22 },
+  { name: 'Thứ 4', revenue: 1400000, orders: 18 },
+  { name: 'Thứ 5', revenue: 2100000, orders: 28 },
+  { name: 'Thứ 6', revenue: 2800000, orders: 35 },
+  { name: 'Thứ 7', revenue: 4200000, orders: 52 },
+  { name: 'Chủ nhật', revenue: 3800000, orders: 48 },
+];
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 function Kpi({
   title,
   value,
   delta,
   isUp = true,
-  tone = 'gray',
+  icon: Icon,
+  color = '#3b82f6',
 }: {
   title: string;
   value: React.ReactNode;
   delta: string;
   isUp?: boolean;
-  tone?: 'gray' | 'green' | 'yellow' | 'red';
+  icon: any;
+  color?: string;
 }): React.ReactElement {
   return (
-    <div className="adminCard">
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <div className="adminMuted" style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {title}
+    <Card style={{ position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ color: '#64748b', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>{title}</div>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>{value}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600, color: isUp ? '#10b981' : '#ef4444' }}>
+            {isUp ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            {delta}
+            <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: '4px' }}>vs hôm qua</span>
+          </div>
         </div>
-        <div className="kpiValue">{value}</div>
-        <div className={`kpiDelta ${isUp ? 'up' : 'down'}`}>
-          {isUp ? '↑' : '↓'} {delta} <span style={{ color: '#94a3b8', fontWeight: 500, marginLeft: '4px' }}>vs tháng trước</span>
+        <div style={{ 
+          padding: '12px', 
+          borderRadius: '12px', 
+          backgroundColor: `${color}15`, 
+          color: color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <Icon size={24} strokeWidth={2.5} />
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 export default function AdminDashboard(): React.ReactElement {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [ordersRes, productsRes] = await Promise.all([
-          fetchAllOrders(),
-          fetchProducts()
-        ]);
-        
-        if (ordersRes.success && Array.isArray(ordersRes.data)) {
-          setOrders(ordersRes.data);
-        }
-        
-        if (Array.isArray(productsRes)) {
-          setProducts(productsRes);
+        const result = await fetchDashboardStats();
+        if (result.success) {
+          setStats(result.data);
         }
       } catch (error) {
         console.error('Lỗi tải dữ liệu dashboard:', error);
@@ -64,125 +109,212 @@ export default function AdminDashboard(): React.ReactElement {
     loadDashboard();
   }, []);
 
-  const recentOrders = useMemo(() => orders.slice(0, 6), [orders]);
-
-  const stats = useMemo(() => {
-    const totalRevenue = orders
-      .filter(o => o.status === 'completed')
-      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-    
-    const pendingCount = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
-    const outOfStockCount = products.filter(p => p.status === 'inactive' || (p.stock_quantity !== undefined && p.stock_quantity <= 0)).length;
-    
-    return {
-      totalRevenue,
-      totalOrders: orders.length,
-      pendingCount,
-      totalProducts: products.length,
-      outOfStockCount
-    };
-  }, [orders, products]);
-
   function getStatusBadge(s: string): React.ReactElement {
     switch (s) {
-      case 'completed': return <span className="aBadge green">Hoàn tất</span>;
-      case 'cancelled': return <span className="aBadge red">Đã hủy</span>;
-      case 'processing': return <span className="aBadge blue">Đang xử lý</span>;
-      default: return <span className="aBadge yellow">Đang chờ</span>;
+      case 'completed': return <Badge tone="green">Thành công</Badge>;
+      case 'cancelled': return <Badge tone="red">Đã hủy</Badge>;
+      case 'processing': return <Badge tone="blue">Đang pha chế</Badge>;
+      default: return <Badge tone="yellow">Chờ xác nhận</Badge>;
     }
+  }
+
+  if (loading || !stats) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner"></div>
+          <p style={{ marginTop: '16px', color: '#64748b', fontWeight: 600 }}>Đang chuẩn bị dữ liệu thực tế...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="adminGrid">
+      {/* Header Section */}
       <div className="adminCol12">
-        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
-            <h1 className="adminH1">Chào buổi sáng, Admin!</h1>
-            <p className="adminMuted">Đây là những gì đang diễn ra với cửa hàng của bạn hôm nay.</p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="adminBtn ghost">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Xuất báo cáo
-            </button>
-            <button className="adminBtn primary">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Tạo đơn mới
-            </button>
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '30px', fontWeight: 900, color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+                Tổng quan Halu Cafe
+              </h1>
+              <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 500 }}>Chào mừng trở lại! Hôm nay quán đang kinh doanh khá ổn định.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button variant="ghost" icon={<Download size={18} />}>Tải báo cáo</Button>
+              <Button variant="primary" icon={<Plus size={18} />}>Đơn mới</Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="adminCol4">
-        <Kpi title="Tổng sản phẩm" value={stats.totalProducts} delta="12%" isUp={true} tone="green" />
+      {/* KPI Cards */}
+      <div className="adminCol3" style={{ gridColumn: 'span 3' }}>
+        <Kpi 
+          title="Doanh thu tổng" 
+          value={formatVnd(stats.totalRevenue)} 
+          delta={`${stats.revenueDelta}%`} 
+          isUp={stats.revenueDelta >= 0} 
+          icon={DollarSign} 
+          color="#3b82f6" 
+        />
       </div>
-      <div className="adminCol4">
-        <Kpi title="Đơn hàng" value={stats.totalOrders} delta="8%" isUp={true} tone="green" />
+      <div className="adminCol3" style={{ gridColumn: 'span 3' }}>
+        <Kpi title="Tổng đơn hàng" value={stats.totalOrders} delta="Mới" icon={ShoppingBag} color="#10b981" />
       </div>
-      <div className="adminCol4">
-        <Kpi title="Doanh thu" value={formatVnd(stats.totalRevenue)} delta="3%" isUp={true} tone="green" />
+      <div className="adminCol3" style={{ gridColumn: 'span 3' }}>
+        <Kpi title="Cần xử lý" value={stats.pendingOrders} delta="Ngay" isUp={false} icon={Clock} color="#f59e0b" />
+      </div>
+      <div className="adminCol3" style={{ gridColumn: 'span 3' }}>
+        <Kpi title="Tổng sản phẩm" value={stats.totalProducts} delta="Menu" icon={Package} color="#8b5cf6" />
       </div>
 
+      {/* Main Chart */}
       <div className="adminCol8">
-        <div className="adminCard">
+        <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Đơn hàng gần đây</h3>
-            <button className="adminBtn ghost" style={{ padding: '8px 16px' }}>Xem tất cả</button>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Doanh thu 7 ngày qua</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>Dữ liệu thực tế từ hệ thống</p>
+            </div>
+            <select style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600 }}>
+              <option>7 ngày qua</option>
+              <option>30 ngày qua</option>
+            </select>
           </div>
+          <div style={{ height: '350px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats.chartData}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                  tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : `${val/1000}k`}
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  formatter={(val: number) => [formatVnd(val), 'Doanh thu']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
 
+      {/* Product Chart */}
+      <div className="adminCol4">
+        <Card>
+          <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Phân bổ danh mục</h3>
+          <div style={{ height: '300px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={stats.pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {stats.pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ marginTop: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={16} /> {stats.outOfStockCount} sản phẩm hết hàng
+              </span>
+              <Button size="sm" variant="ghost">Quản lý</Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Orders Table */}
+      <div className="adminCol12">
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>Lịch sử đơn hàng gần đây</h3>
+            <Button variant="ghost" size="sm">Xem tất cả</Button>
+          </div>
           <table className="aTable">
             <thead>
               <tr>
-                <th>Mã đơn</th>
+                <th style={{ borderRadius: '12px 0 0 12px' }}>Đơn hàng</th>
                 <th>Khách hàng</th>
-                <th>Tổng tiền</th>
-                <th>Trạng thái</th>
+                <th>Ngày đặt</th>
+                <th>Tổng thanh toán</th>
+                <th style={{ textAlign: 'center' }}>Trạng thái</th>
+                <th style={{ textAlign: 'right', borderRadius: '0 12px 12px 0' }}></th>
               </tr>
             </thead>
             <tbody>
-              {recentOrders.map((o) => (
+              {stats.recentOrders.map((o) => (
                 <tr key={o.id}>
-                  <td style={{ fontWeight: 700, color: 'var(--admin-primary)' }}>#{o.id}</td>
-                  <td style={{ fontWeight: 600 }}>{o.full_name || 'Khách hàng'}</td>
-                  <td style={{ fontWeight: 700 }}>{formatVnd(parseFloat(o.total_amount) || 0)}</td>
-                  <td>{getStatusBadge(o.status)}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        borderRadius: '10px', 
+                        backgroundColor: '#f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748b'
+                      }}>
+                        <ShoppingBag size={20} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '14px' }}>#{o.id}</div>
+                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>{o.payment_method || 'Tiền mặt'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ fontWeight: 700 }}>{o.full_name || 'Khách vãng lai'}</td>
+                  <td style={{ color: '#64748b', fontSize: '13px' }}>{new Date(o.created_at).toLocaleDateString('vi-VN')}</td>
+                  <td style={{ fontWeight: 800, color: '#0f172a' }}>{formatVnd(parseFloat(o.total_amount) || 0)}</td>
+                  <td style={{ textAlign: 'center' }}>{getStatusBadge(o.status)}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="aIconBtn">
+                      <ChevronRight size={18} />
+                    </button>
+                  </td>
                 </tr>
               ))}
-              {!loading && recentOrders.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>Chưa có đơn hàng nào</td>
-                </tr>
-              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <div className="adminCol4">
-        <div className="adminCard">
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 700 }}>Vận hành</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Đơn chờ xử lý</div>
-                <div style={{ fontSize: '20px', fontWeight: 800 }}>{stats.pendingCount < 10 ? `0${stats.pendingCount}` : stats.pendingCount}</div>
-              </div>
-              <div style={{ padding: '10px', backgroundColor: '#fef9c3', borderRadius: '10px', color: '#854d0e' }}>⏳</div>
-            </div>
-            <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Sản phẩm hết hàng</div>
-                <div style={{ fontSize: '20px', fontWeight: 800 }}>{stats.outOfStockCount < 10 ? `0${stats.outOfStockCount}` : stats.outOfStockCount}</div>
-              </div>
-              <div style={{ padding: '10px', backgroundColor: '#fee2e2', borderRadius: '10px', color: '#991b1b' }}>⚠️</div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, fontStyle: 'italic' }}>
-                * Hệ thống sẽ tự động cập nhật dữ liệu thực tế sau khi kết nối với API backend của bạn.
-              </p>
-            </div>
-          </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

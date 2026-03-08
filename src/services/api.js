@@ -42,6 +42,34 @@ export const loginAPI = async (identifier, password) => {
   }
 };
 
+export const googleLoginAPI = async (idToken) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/google_login.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+
+    const data = await safeReadJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || 'Google login failed');
+    }
+
+    return {
+      success: true,
+      data: data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'Có lỗi xảy ra khi đăng nhập bằng Google'
+    };
+  }
+};
+
 export const registerAPI = async (userData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/register.php`, {
@@ -143,6 +171,34 @@ export const fetchProfileAPI = async (userId) => {
     return {
       success: false,
       error: error.message || 'Có lỗi xảy ra khi tải profile'
+    };
+  }
+};
+
+export const fetchDashboardStats = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Bạn chưa đăng nhập');
+
+    const response = await fetch(`${API_BASE_URL}/admin_stats.php`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await safeReadJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Không thể lấy thống kê');
+    }
+
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message || 'Lỗi hệ thống'
     };
   }
 };

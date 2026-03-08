@@ -190,7 +190,7 @@ export default function Shop(): React.ReactElement {
                 gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '18px 60px',
               }}>
-                {products.slice(0, 7).map((p) => (
+                {products.slice(0, 6).map((p) => (
                   <div
                     key={p.id}
                     style={{
