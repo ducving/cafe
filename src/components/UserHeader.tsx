@@ -28,6 +28,7 @@ export default function UserHeader(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<CategoryApi[]>([]);
   const [scrolled, setScrolled] = useState(false);
+  const [updateTick, setUpdateTick] = useState(0);
 
   const isLoggedIn = !!localStorage.getItem('token');
   const user = safeParseUser(localStorage.getItem('user'));
@@ -35,16 +36,30 @@ export default function UserHeader(): React.ReactElement {
   const userInitials = userName.charAt(0).toUpperCase();
 
   useEffect(() => {
-    fetchCategories()
-      .then((list) => setCategories(list))
-      .catch((err) => console.error(err));
+    const fetchAll = () => {
+      fetchCategories()
+        .then((list) => setCategories(list))
+        .catch((err) => console.error(err));
+    };
+    
+    fetchAll();
+
+    const handleUpdate = () => {
+      console.log('Header detected user data update');
+      setUpdateTick(t => t + 1);
+    };
+
+    window.addEventListener('userDataUpdated', handleUpdate);
 
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('userDataUpdated', handleUpdate);
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {

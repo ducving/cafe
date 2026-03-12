@@ -262,32 +262,7 @@ export default function Shop(): React.ReactElement {
       </div>
 
       {/* ===== 4. SẢN PHẨM NỔI BẬT (grid cards) ===== */}
-      {products.length > 6 && (
-        <div style={{ backgroundColor: '#f5f0ea', padding: '50px 0 60px' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '28px', color: '#c8a96e', margin: '0 0 6px', fontWeight: 'bold' }}>
-                Coffee là hương vị của bạn
-              </h2>
-              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Có gì bất ngờ tại đây</p>
-            </div>
-            
-            {/* Products Card style */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px' }}>
-              {products.slice(0, 4).map(p => (
-                <ProductCard 
-                  key={p.id} 
-                  product={p} 
-                  onAdd={() => {
-                    handleAdd(p);
-                  }}
-                  isAdding={addingId === p.id}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
       {/* ===== 6. TIN TỨC ===== */}
       <div style={{ backgroundColor: '#efebe4', padding: '60px 20px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>

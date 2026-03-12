@@ -19,6 +19,7 @@ import News from './pages/News';
 import Profile from './pages/Profile';
 import OrderHistory from './pages/OrderHistory';
 import AttendanceStandalone from './pages/AttendanceStandalone';
+import MemoryGame from './pages/MemoryGame';
 
 // Single place to manage routes (like your router.tsx screenshot)
 export const router = createBrowserRouter([
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       { path: 'cart', element: <Cart /> },
+      { path: 'minigame', element: <MemoryGame /> },
       {
         path: 'checkout',
         element: (

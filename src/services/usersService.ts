@@ -40,7 +40,7 @@ async function safeReadJson(response: Response) {
 
 export const fetchUsers = async (): Promise<UserApi[]> => {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${API_BASE_URL}/users`, {
+  const response = await fetch(`${API_BASE_URL}/users?role=all`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export const fetchUsers = async (): Promise<UserApi[]> => {
   });
   const data = await safeReadJson(response);
   if (!response.ok) throw new Error(data.message || 'Không thể tải danh sách người dùng');
-  // API returns { success: true, data: [...] } or just [...]
+  // API returns { success: true, count: X, data: [...] }
   return data.data || data;
 };
 

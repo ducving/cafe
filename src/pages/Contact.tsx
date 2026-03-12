@@ -11,10 +11,30 @@ export default function Contact(): React.ReactElement {
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi trong giây lát.');
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    
+    try {
+      const response = await fetch('/doan/api/contact.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Cảm ơn bạn! Tin nhắn của bạn đã được gửi thành công trực tiếp đến shop.');
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        alert('Có lỗi: ' + data.message);
+      }
+    } catch (err) {
+      console.error('Lỗi khi gửi liên hệ:', err);
+      alert('Không thể gửi tin nhắn lúc này. Vui lòng thử lại sau.');
+    }
   };
 
   return (
@@ -60,7 +80,7 @@ export default function Contact(): React.ReactElement {
                 <div style={{ fontSize: '24px', color: GOLD }}>✉️</div>
                 <div>
                   <h4 style={{ margin: '0 0 5px', color: DARK, fontSize: '16px', fontWeight: 700 }}>Email:</h4>
-                  <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>support@halucafe.vn</p>
+                  <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>ducvinh190204@gmail.com</p>
                 </div>
               </div>
 

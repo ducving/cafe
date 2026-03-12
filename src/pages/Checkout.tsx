@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../user/CartContext';
 import { createOrder } from '../services/ordersService';
 import { fetchPoints, calculatePoints } from '../services/pointsService';
+import { fetchUserVouchers, UserVoucherData } from '../services/vouchersService';
 
 export default function Checkout(): React.ReactElement {
   const navigate = useNavigate();
@@ -26,7 +27,37 @@ export default function Checkout(): React.ReactElement {
   const [usePoints, setUsePoints] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [willEarn, setWillEarn] = useState(0);
-  const [redeemRate] = useState(1000); // 1 điểm = 1.000đ
+  const [redeemRate] = useState(10000); // 1 điểm = 10.000đ
+
+  // Vouchers state
+  const [userVouchers, setUserVouchers] = useState<UserVoucherData[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<UserVoucherData | null>(null);
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+
+  const refreshData = () => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (token) {
+      fetchPoints().then(res => { if (res.success) setMyPoints(res.points); }).catch(() => {});
+      
+      const user = JSON.parse(userStr || '{}');
+      if (user.id) {
+        fetchUserVouchers(user.id, 0).then(res => {
+          if (res.success) setUserVouchers(res.data || []);
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      console.log('Checkout detected user data update');
+      refreshData();
+    };
+    window.addEventListener('userDataUpdated', handleUpdate);
+    return () => window.removeEventListener('userDataUpdated', handleUpdate);
+  }, []);
 
   // Auto-fill user info if logged in
   useEffect(() => {
@@ -44,11 +75,7 @@ export default function Checkout(): React.ReactElement {
         console.error('Error parsing user data', e);
       }
     }
-    // Load points
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchPoints().then(res => { if (res.success) setMyPoints(res.points); }).catch(() => {});
-    }
+    refreshData();
   }, []);
 
   // Recalculate when usePoints changes
@@ -63,6 +90,21 @@ export default function Checkout(): React.ReactElement {
       })
       .catch(() => {});
   }, [usePoints, totalPrice, myPoints]);
+
+  // Handle voucher discount calculation
+  useEffect(() => {
+    if (!selectedVoucher) {
+      setVoucherDiscount(0);
+      return;
+    }
+
+    if (selectedVoucher.discount_type === 'percent') {
+      const amount = (totalPrice * Number(selectedVoucher.discount_amount)) / 100;
+      setVoucherDiscount(amount);
+    } else {
+      setVoucherDiscount(Number(selectedVoucher.discount_amount));
+    }
+  }, [selectedVoucher, totalPrice]);
 
   // If cart is empty, redirect back to cart or home
   useEffect(() => {
@@ -87,7 +129,9 @@ export default function Checkout(): React.ReactElement {
         ...formData,
         items: orderItems,
         points_redeemed: usePoints,
-        discount_amount: discount,
+        discount_amount: discount + voucherDiscount,
+        voucher_id: selectedVoucher?.voucher_id || null, // Optional if your backend supports it
+        voucher_code: selectedVoucher?.code || null,
       } as any);
       if (response.success) {
         const orderId = response.data?.id;
@@ -277,6 +321,7 @@ export default function Checkout(): React.ReactElement {
             >
               <option value="cod">Thanh toán khi nhận hàng (COD)</option>
               <option value="banking">Chuyển khoản qua ngân hàng</option>
+              <option value="vnpay">Thanh toán qua VNPAY</option>
             </select>
           </div>
         </div>
@@ -294,6 +339,34 @@ export default function Checkout(): React.ReactElement {
           <div style={summaryRow}>
             <span>Phí giao hàng</span>
             <span style={{ color: '#16a34a', fontWeight: 600 }}>Miễn phí</span>
+          </div>
+
+          {/* VOUCHER SELECTION */}
+          <div style={{
+            marginTop: '20px',
+            padding: '16px',
+            borderRadius: '16px',
+            backgroundColor: '#f8fafc',
+            border: '1.5px solid #e2e8f0',
+            cursor: 'pointer'
+          }} onClick={() => setShowVoucherModal(true)}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                   <span style={{ fontSize: '18px' }}>🎟️</span>
+                   <div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
+                        {selectedVoucher ? `Mã: ${selectedVoucher.code}` : 'Voucher giảm giá'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        {selectedVoucher ? 'Đã áp dụng' : `${userVouchers.length} mã khả dụng`}
+                      </div>
+                   </div>
+                </div>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '28px' }}>10.000đ chi tiêu = 1 điểm · 1 điểm = 10.000đ giảm giá</p>
+                <span style={{ color: '#c8a96e', fontWeight: 800, fontSize: '13px' }}>
+                  {selectedVoucher ? 'THAY ĐỔI' : 'CHỌN MÃ'}
+                </span>
+             </div>
           </div>
 
           {/* POINTS REDEMPTION - PREMIUM DESIGN */}
@@ -321,10 +394,10 @@ export default function Checkout(): React.ReactElement {
                       Tiết kiệm nhiều hơn với điểm Halu
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#c8a96e' }}>{myPoints.toLocaleString('vi-VN')}</div>
-                    <div style={{ fontSize: '10px', color: '#c8a96e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Điểm khả dụng</div>
-                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#fff8', marginTop: '4px' }}>1 điểm</div>
+                  <div style={{ fontSize: '11px', color: '#fff8' }}>= 10.000đ</div>
+                </div>
                 </div>
 
                 {/* Slider bar custom */}
@@ -345,7 +418,7 @@ export default function Checkout(): React.ReactElement {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#d4b483', fontWeight: 600 }}>
                     <span>0đ</span>
                     <span>Dùng {usePoints} điểm</span>
-                    <span>-{new Intl.NumberFormat('vi-VN').format(myPoints * 1000)}đ</span>
+                    <span>-{new Intl.NumberFormat('vi-VN').format(usePoints * 10000)}đ</span>
                   </div>
                 </div>
 
@@ -433,8 +506,15 @@ export default function Checkout(): React.ReactElement {
           <div style={{ marginTop: '24px' }}>
             {discount > 0 && (
               <div style={summaryRow}>
-                <span style={{ color: '#16a34a', fontWeight: 600 }}>Giảm giá (Ưu đãi tích lũy)</span>
+                <span style={{ color: '#16a34a', fontWeight: 600 }}>Ưu đãi tích lũy</span>
                 <span style={{ color: '#16a34a', fontWeight: 700 }}>-{new Intl.NumberFormat('vi-VN').format(discount)}đ</span>
+              </div>
+            )}
+
+            {voucherDiscount > 0 && (
+              <div style={summaryRow}>
+                <span style={{ color: '#dc2626', fontWeight: 600 }}>Voucher trúng thưởng</span>
+                <span style={{ color: '#dc2626', fontWeight: 700 }}>-{new Intl.NumberFormat('vi-VN').format(voucherDiscount)}đ</span>
               </div>
             )}
             
@@ -446,7 +526,7 @@ export default function Checkout(): React.ReactElement {
 
             <div style={totalRow}>
               <span>Tổng thanh toán</span>
-              <span style={{ fontSize: '24px', color: '#dc2626' }}>{new Intl.NumberFormat('vi-VN').format(Math.max(0, totalPrice - discount))}đ</span>
+              <span style={{ fontSize: '24px', color: '#dc2626' }}>{new Intl.NumberFormat('vi-VN').format(Math.max(0, totalPrice - discount - voucherDiscount))}đ</span>
             </div>
 
             {willEarn > 0 && (
@@ -497,6 +577,75 @@ export default function Checkout(): React.ReactElement {
           </button>
         </div>
       </form>
+
+      {/* VOUCHER MODAL */}
+      {showVoucherModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '24px', width: '100%', maxWidth: '500px',
+            maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+          }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Voucher của bạn</h3>
+              <button 
+                onClick={() => setShowVoucherModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div style={{ padding: '20px', overflowY: 'auto' }}>
+              {userVouchers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Bạn không có voucher nào khả dụng</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {userVouchers.map((v) => (
+                    <div 
+                      key={v.id} 
+                      onClick={() => {
+                        setSelectedVoucher(selectedVoucher?.id === v.id ? null : v);
+                        setShowVoucherModal(false);
+                      }}
+                      style={{
+                        padding: '16px', borderRadius: '16px', border: `2px solid ${selectedVoucher?.id === v.id ? '#c8a96e' : '#f1f5f9'}`,
+                        backgroundColor: selectedVoucher?.id === v.id ? '#fcfaf6' : 'white', cursor: 'pointer',
+                        transition: 'all 0.2s', position: 'relative'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#c8a96e' }}>
+                          {v.discount_type === 'percent' ? `Giảm ${v.discount_amount}%` : `Giảm ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_amount))}đ`}
+                        </span>
+                        {selectedVoucher?.id === v.id && <span style={{ color: '#c8a96e' }}>✓</span>}
+                      </div>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>{v.code}</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Hạn dùng: {new Date(v.expiry_date).toLocaleDateString('vi-VN')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '24px', borderTop: '1px solid #f1f5f9' }}>
+               <button 
+                onClick={() => setShowVoucherModal(false)}
+                style={{ 
+                  width: '100%', padding: '14px', borderRadius: '12px', 
+                  backgroundColor: '#1e293b', color: 'white', border: 'none', 
+                  fontWeight: 700, cursor: 'pointer' 
+                }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

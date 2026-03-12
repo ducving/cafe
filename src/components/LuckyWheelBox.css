@@ -1,0 +1,132 @@
+/* src/components/LuckyWheelBox.css */
+:root {
+  --wheel-primary: #f59e0b; /* Amber */
+  --wheel-secondary: #d97706;
+}
+
+.luckywheel-container {
+  position: fixed;
+  bottom: 105px; /* Above chatbot toggle */
+  right: 25px;
+  z-index: 9998;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+.luckywheel-toggle {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--wheel-primary), var(--wheel-secondary));
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.luckywheel-toggle:hover {
+  transform: scale(1.1) rotate(15deg);
+}
+
+.luckywheel-window {
+  position: absolute;
+  bottom: 75px;
+  right: 0;
+  width: 320px;
+  background: var(--chat-bg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: var(--chat-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: bottom right;
+  animation: slideInChat 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-align: center;
+  padding-bottom: 20px;
+}
+
+.luckywheel-header {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, var(--wheel-primary), var(--wheel-secondary));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.luckywheel-close {
+  background: transparent;
+  border: none;
+  color: white;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.luckywheel-close:hover {
+  opacity: 1;
+}
+
+.wheel-canvas-container {
+  margin: 20px auto;
+  position: relative;
+  width: 250px;
+  height: 250px;
+}
+
+.wheel-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: transform 3s cubic-bezier(0.175, 0.885, 0.32, 1);
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background: #dc2626;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  z-index: 2;
+}
+
+.spin-btn {
+  background: linear-gradient(135deg, var(--wheel-primary), var(--wheel-secondary));
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.spin-btn:hover {
+  transform: translateY(-2px);
+}
+
+.spin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

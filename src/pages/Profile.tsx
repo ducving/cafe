@@ -5,6 +5,7 @@ import { fetchPaymentsHistory } from '../services/paymentsService';
 import { fetchPoints, PointsData } from '../services/pointsService';
 import { useToast } from '../components/ToastContext';
 import { Button } from '../admin/components/ui';
+import { fetchUserVouchers, UserVoucherData } from '../services/vouchersService';
 
 const GOLD = '#c8a96e';
 const DARK = '#3a2415';
@@ -27,8 +28,12 @@ export default function Profile(): React.ReactElement {
   });
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'points'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'points' | 'vouchers'>('profile');
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
+  const [vouchers, setVouchers] = useState<UserVoucherData[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [pointsPage, setPointsPage] = useState(1);
+  const pointsPerPage = 6;
 
   const loadProfile = async (userId: any) => {
     try {
@@ -71,6 +76,22 @@ export default function Profile(): React.ReactElement {
       setLoadingOrders(false);
     }
   };
+
+  const loadVouchers = async () => {
+    if (!user?.id || vouchers.length > 0) return;
+    setLoadingVouchers(true);
+    try {
+      const res = await fetchUserVouchers(user.id);
+      if (res.success) {
+        setVouchers(res.data || []);
+      }
+    } catch (err) {
+      console.error('Lỗi tải voucher:', err);
+    } finally {
+      setLoadingVouchers(false);
+    }
+  };
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -332,12 +353,20 @@ export default function Profile(): React.ReactElement {
           )}
 
           <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {(['profile', 'points'] as const).map((tab) => {
-              const labels: Record<string, string> = { profile: '⚙️ Cài đặt tài khoản', points: '⭐ Điểm thưởng' };
+            {(['profile', 'points', 'vouchers'] as const).map((tab) => {
+              const labels: Record<string, string> = { 
+                profile: '⚙️ Cài đặt tài khoản', 
+                points: '⭐ Điểm thưởng',
+                vouchers: '🎁 Mã trúng thưởng'
+              };
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    if (tab === 'vouchers') loadVouchers();
+                    if (tab === 'points') setPointsPage(1);
+                  }}
                   style={{
                     padding: '12px', border: 'none',
                     background: activeTab === tab ? '#f5f0ea' : 'none',
@@ -556,8 +585,11 @@ export default function Profile(): React.ReactElement {
                       <div style={{ fontWeight: 600 }}>Chưa có giao dịch nào</div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {pointsData.history.map((tx) => {
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {pointsData.history
+                        .slice((pointsPage - 1) * pointsPerPage, pointsPage * pointsPerPage)
+                        .map((tx) => {
                         const isEarn = tx.type === 'earn';
                         const isRedeem = tx.type === 'redeem';
                         const txColor = isEarn ? '#22c55e' : isRedeem ? '#ef4444' : '#f59e0b';
@@ -592,7 +624,64 @@ export default function Profile(): React.ReactElement {
                         );
                       })}
                     </div>
-                  )}
+
+                    {/* Pagination Controls */}
+                    {pointsData.history.length > pointsPerPage && (
+                      <div style={{ 
+                        marginTop: '25px', 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        gap: '8px' 
+                      }}>
+                        <button 
+                          onClick={() => setPointsPage(p => Math.max(1, p - 1))}
+                          disabled={pointsPage === 1}
+                          style={{
+                            padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                            backgroundColor: pointsPage === 1 ? '#f8fafc' : '#fff',
+                            cursor: pointsPage === 1 ? 'not-allowed' : 'pointer', color: pointsPage === 1 ? '#cbd5e1' : DARK,
+                            fontSize: '13px', fontWeight: 600
+                          }}
+                        >
+                          Trước
+                        </button>
+                        
+                        {Array.from({ length: Math.ceil(pointsData.history.length / pointsPerPage) }).map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setPointsPage(i + 1)}
+                            style={{
+                              width: '35px', height: '35px', borderRadius: '8px',
+                              border: '1px solid',
+                              borderColor: pointsPage === i + 1 ? GOLD : '#e2e8f0',
+                              backgroundColor: pointsPage === i + 1 ? GOLD : '#fff',
+                              color: pointsPage === i + 1 ? '#fff' : DARK,
+                              cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+
+                        <button 
+                          onClick={() => setPointsPage(p => Math.min(Math.ceil(pointsData.history.length / pointsPerPage), p + 1))}
+                          disabled={pointsPage === Math.ceil(pointsData.history.length / pointsPerPage)}
+                          style={{
+                            padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                            backgroundColor: pointsPage === Math.ceil(pointsData.history.length / pointsPerPage) ? '#f8fafc' : '#fff',
+                            cursor: pointsPage === Math.ceil(pointsData.history.length / pointsPerPage) ? 'not-allowed' : 'pointer', 
+                            color: pointsPage === Math.ceil(pointsData.history.length / pointsPerPage) ? '#cbd5e1' : DARK,
+                            fontSize: '13px', fontWeight: 600
+                          }}
+                        >
+                          Sau
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -617,7 +706,108 @@ export default function Profile(): React.ReactElement {
                   <p style={{ color: '#888', marginBottom: '25px', fontSize: '14px' }}>Hãy chọn cho mình những món đồ uống tuyệt vời nhất từ thực đơn của chúng tôi.</p>
                   <Button variant="primary" onClick={() => navigate('/shop')} style={{ fontWeight: 700, padding: '12px 30px' }}>KHÁM PHÁ MENU</Button>
                 </div>
+              ) : activeTab === 'vouchers' ? (
+            <div style={{ backgroundColor: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                 <h2 style={{ fontSize: '20px', color: DARK, margin: 0, fontWeight: 700 }}>🎁 Mã trúng thưởng của bạn</h2>
+                 <button 
+                  onClick={() => navigate('/shop')}
+                  style={{ backgroundColor: 'transparent', border: '1px solid ' + GOLD, color: GOLD, padding: '6px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Dùng ngay
+                </button>
+              </div>
+
+              {loadingVouchers ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Đang tải mã giảm giá...</div>
+              ) : vouchers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', borderRadius: '12px', backgroundColor: '#fdfdfd', border: '2px dashed #eee' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>🎡</div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#64748b' }}>Bạn chưa có mã trúng thưởng nào</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>Quay Vòng Quay May Mắn để nhận ngay Voucher giảm giá siêu xịn bạn nhé!</p>
+                  <Button variant="primary" onClick={() => navigate('/')}>QUAY NGAY</Button>
+                </div>
               ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                  {vouchers.map((v) => {
+                    const isUsed = v.is_used === 1;
+                    return (
+                      <div key={v.id} style={{
+                        position: 'relative',
+                        padding: '20px',
+                        borderRadius: '16px',
+                        backgroundColor: '#fff',
+                        border: '1px solid #f0f0f0',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+                        opacity: isUsed ? 0.6 : 1,
+                        filter: isUsed ? 'grayscale(1)' : 'none',
+                        overflow: 'hidden'
+                      }}>
+                        {/* Ticket background effect */}
+                        <div style={{ position: 'absolute', top: '50%', left: '-10px', transform: 'translateY(-50%)', width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', borderRight: '1px solid #f0f0f0' }}></div>
+                        <div style={{ position: 'absolute', top: '50%', right: '-10px', transform: 'translateY(-50%)', width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', borderLeft: '1px solid #f0f0f0' }}></div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            fontWeight: 800, 
+                            color: isUsed ? '#888' : GOLD, 
+                            backgroundColor: isUsed ? '#eee' : GOLD + '15',
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            textTransform: 'uppercase'
+                          }}>
+                            {v.discount_type === 'percent' ? `GIẢM ${v.discount_amount}%` : `GIẢM ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_amount))}₫`}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            {isUsed ? 'Đã dùng' : 'Còn hạn'}
+                          </span>
+                        </div>
+                        
+                        <h4 style={{ margin: '0 0 5px', fontSize: '18px', fontWeight: 800, color: DARK }}>{v.code}</h4>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>Hạn dùng: {new Date(v.expiry_date).toLocaleDateString('vi-VN')}</div>
+                        
+                        <div style={{ 
+                          marginTop: '15px', 
+                          borderTop: '1px dashed #eee', 
+                          paddingTop: '15px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>Ngày nhận: {new Date(v.created_at).toLocaleDateString('vi-VN')}</span>
+                          {!isUsed && (
+                             <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(v.code);
+                                showToast('Đã chép mã: ' + v.code, 'success');
+                              }}
+                              style={{ 
+                                background: 'none', border: 'none', color: GOLD, 
+                                fontWeight: 700, fontSize: '12px', cursor: 'pointer' 
+                              }}
+                            >
+                              Sao chép
+                            </button>
+                          )}
+                        </div>
+                        {isUsed && (
+                          <div style={{ 
+                            position: 'absolute', top: '10px', right: '10px', 
+                            transform: 'rotate(15deg)', border: '2px solid #888',
+                            color: '#888', padding: '2px 8px', borderRadius: '4px',
+                            fontSize: '10px', fontWeight: 900, textTransform: 'uppercase'
+                          }}>
+                            USED
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {orders.map((order) => {
                     const priceNominal = Number(order.total_amount || 0);
