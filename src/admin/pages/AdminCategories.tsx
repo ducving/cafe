@@ -90,7 +90,10 @@ export default function AdminCategories(): React.ReactElement {
 
     const name = form.name.trim();
     const slug = form.slug.trim();
-    if (!name || !slug) return;
+    if (!name || !slug) {
+      showToast('Vui lòng nhập đầy đủ tên và đường dẫn danh mục!', 'warning');
+      return;
+    }
 
     setSaving(true);
 

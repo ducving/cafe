@@ -1,7 +1,7 @@
 import API_BASE_URL from './config';
 const PRODUCTS_API_URL = `${API_BASE_URL}/products.php`;
 
-export type ProductStatus = 'active' | 'inactive' | 'out_of_stock';
+export type ProductStatus = 'active' | 'inactive' | 'out_of_stock' | 'deleted';
 
 export type ProductApi = {
   id: number;

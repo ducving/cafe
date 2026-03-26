@@ -8,6 +8,8 @@ export default function News(): React.ReactElement {
   const navigate = useNavigate();
   const [newsList, setNewsList] = useState<NewsApi[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
   useEffect(() => {
     setLoading(true);
@@ -68,7 +70,7 @@ export default function News(): React.ReactElement {
             <div style={{ textAlign: 'center', padding: '100px 0', color: '#999' }}>Chưa có tin tức nào.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-              {newsList.map((item) => {
+              {newsList.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item) => {
                 const imageUrl = item.image 
                   ? (item.image.startsWith('http') ? item.image : `/doan/${item.image}`)
                   : 'https://via.placeholder.com/400x250?text=No+Image';
@@ -127,6 +129,51 @@ export default function News(): React.ReactElement {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pagination UI */}
+          {!loading && newsList.length > pageSize && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '40px' }}>
+              <button
+                onClick={() => { setCurrentPage(prev => Math.max(prev - 1, 1)); window.scrollTo(0, 0); }}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '8px 15px', borderRadius: '4px', border: '1px solid #ddd',
+                  backgroundColor: '#fff', color: currentPage === 1 ? '#ccc' : '#333',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Trang trước
+              </button>
+              
+              {Array.from({ length: Math.ceil(newsList.length / pageSize) }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setCurrentPage(i + 1); window.scrollTo(0, 0); }}
+                  style={{
+                    width: '35px', height: '35px', borderRadius: '4px', border: '1px solid',
+                    borderColor: currentPage === i + 1 ? GOLD : '#ddd',
+                    backgroundColor: currentPage === i + 1 ? GOLD : '#fff',
+                    color: currentPage === i + 1 ? '#fff' : '#333',
+                    cursor: 'pointer', fontWeight: 'bold'
+                  }}
+                >
+                  {i + 1}
+                </button>
+              ))}
+
+              <button
+                onClick={() => { setCurrentPage(prev => Math.min(prev + 1, Math.ceil(newsList.length / pageSize))); window.scrollTo(0, 0); }}
+                disabled={currentPage === Math.ceil(newsList.length / pageSize)}
+                style={{
+                  padding: '8px 15px', borderRadius: '4px', border: '1px solid #ddd',
+                  backgroundColor: '#fff', color: currentPage === Math.ceil(newsList.length / pageSize) ? '#ccc' : '#333',
+                  cursor: currentPage === Math.ceil(newsList.length / pageSize) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Trang sau
+              </button>
             </div>
           )}
         </main>

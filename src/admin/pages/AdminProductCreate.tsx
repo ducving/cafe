@@ -73,7 +73,24 @@ export default function AdminProductCreate(): React.ReactElement {
     const category = form.category.trim();
     const price = Number(form.price);
     const stock = Number(form.stock);
-    if (!name || !sku || !category || !Number.isFinite(price) || !Number.isFinite(stock)) {
+
+    if (!name) {
+      showToast('Vui lòng nhập tên sản phẩm!', 'warning');
+      setSaving(false);
+      return;
+    }
+    if (!category) {
+      showToast('Vui lòng chọn danh mục!', 'warning');
+      setSaving(false);
+      return;
+    }
+    if (isNaN(price) || price < 0) {
+      showToast('Vui lòng nhập giá bán hợp lệ!', 'warning');
+      setSaving(false);
+      return;
+    }
+    if (isNaN(stock) || stock < 0) {
+      showToast('Vui lòng nhập số lượng tồn kho hợp lệ!', 'warning');
       setSaving(false);
       return;
     }

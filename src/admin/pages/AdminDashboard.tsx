@@ -92,11 +92,13 @@ function Kpi({
 export default function AdminDashboard(): React.ReactElement {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('7days');
 
   useEffect(() => {
     const loadDashboard = async () => {
+      setLoading(true);
       try {
-        const result = await fetchDashboardStats();
+        const result = await fetchDashboardStats(period);
         if (result.success) {
           setStats(result.data);
         }
@@ -107,7 +109,8 @@ export default function AdminDashboard(): React.ReactElement {
       }
     };
     loadDashboard();
-  }, []);
+  }, [period]); // Reload when period changes
+
 
   function getStatusBadge(s: string): React.ReactElement {
     switch (s) {
@@ -175,12 +178,16 @@ export default function AdminDashboard(): React.ReactElement {
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Doanh thu 7 ngày qua</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Doanh thu {period === '7days' ? '7 ngày qua' : '30 ngày qua'}</h3>
               <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>Dữ liệu thực tế từ hệ thống</p>
             </div>
-            <select style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600 }}>
-              <option>7 ngày qua</option>
-              <option>30 ngày qua</option>
+            <select 
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600, cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="7days">7 ngày qua</option>
+              <option value="30days">30 ngày qua</option>
             </select>
           </div>
           <div style={{ height: '350px', width: '100%' }}>

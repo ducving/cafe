@@ -27,7 +27,7 @@ export default function Checkout(): React.ReactElement {
   const [usePoints, setUsePoints] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [willEarn, setWillEarn] = useState(0);
-  const [redeemRate] = useState(10000); // 1 điểm = 10.000đ
+  const [redeemRate] = useState(1000); // 1 điểm = 1.000đ
 
   // Vouchers state
   const [userVouchers, setUserVouchers] = useState<UserVoucherData[]>([]);
@@ -80,16 +80,22 @@ export default function Checkout(): React.ReactElement {
 
   // Recalculate when usePoints changes
   useEffect(() => {
-    if (myPoints === 0) return;
-    calculatePoints(totalPrice, usePoints)
-      .then(res => {
-        if (res.success) {
-          setDiscount(res.discount);
-          setWillEarn(res.will_earn);
-        }
-      })
-      .catch(() => {});
-  }, [usePoints, totalPrice, myPoints]);
+    // Ưu tiên dùng logic frontend để đồng bộ ngay lập tức với giao diện theo screenshot
+    // 1 điểm = 1000đ
+    const calcDiscount = usePoints * redeemRate;
+    setDiscount(calcDiscount);
+
+    // Vẫn gọi API để lấy số điểm sẽ nhận được (will_earn)
+    if (myPoints > 0) {
+      calculatePoints(totalPrice, usePoints)
+        .then(res => {
+          if (res.success) {
+            setWillEarn(res.will_earn);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [usePoints, totalPrice, myPoints, redeemRate]);
 
   // Handle voucher discount calculation
   useEffect(() => {
@@ -362,7 +368,7 @@ export default function Checkout(): React.ReactElement {
                       </div>
                    </div>
                 </div>
-                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '28px' }}>10.000đ chi tiêu = 1 điểm · 1 điểm = 10.000đ giảm giá</p>
+                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '28px' }}>Tích lũy điểm khi mua hàng · 1 điểm = 1.000đ giảm giá</p>
                 <span style={{ color: '#c8a96e', fontWeight: 800, fontSize: '13px' }}>
                   {selectedVoucher ? 'THAY ĐỔI' : 'CHỌN MÃ'}
                 </span>
@@ -395,9 +401,9 @@ export default function Checkout(): React.ReactElement {
                     </p>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#fff8', marginTop: '4px' }}>1 điểm</div>
-                  <div style={{ fontSize: '11px', color: '#fff8' }}>= 10.000đ</div>
-                </div>
+                    <div style={{ fontSize: '12px', color: '#92680a', fontWeight: 700 }}>{myPoints} điểm</div>
+                    <div style={{ fontSize: '11px', color: '#a1824a' }}>Sẵn có</div>
+                  </div>
                 </div>
 
                 {/* Slider bar custom */}
@@ -418,7 +424,7 @@ export default function Checkout(): React.ReactElement {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#d4b483', fontWeight: 600 }}>
                     <span>0đ</span>
                     <span>Dùng {usePoints} điểm</span>
-                    <span>-{new Intl.NumberFormat('vi-VN').format(usePoints * 10000)}đ</span>
+                    <span>-{new Intl.NumberFormat('vi-VN').format(usePoints * redeemRate)}đ</span>
                   </div>
                 </div>
 

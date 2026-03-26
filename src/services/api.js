@@ -175,12 +175,12 @@ export const fetchProfileAPI = async (userId) => {
   }
 };
 
-export const fetchDashboardStats = async () => {
+export const fetchDashboardStats = async (period = '7days') => {
   try {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Bạn chưa đăng nhập');
 
-    const response = await fetch(`${API_BASE_URL}/admin_stats.php`, {
+    const response = await fetch(`${API_BASE_URL}/admin_stats.php?period=${period}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

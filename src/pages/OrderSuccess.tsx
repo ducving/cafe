@@ -91,7 +91,6 @@ export default function OrderSuccess(): React.ReactElement {
           Cảm ơn bạn đã tin tưởng chọn Cafe Shop. <br />
           Đơn hàng của bạn đã được tiếp nhận và đang trong quá trình chuẩn bị.
         </p>
-
         {id && (
           <div style={orderIdBox}>
             <span style={{ fontSize: '14px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Mã đơn hàng</span>
@@ -110,7 +109,7 @@ export default function OrderSuccess(): React.ReactElement {
           </button>
           <button 
             style={secondaryBtn}
-            onClick={() => navigate('/my-orders')} // Assuming there might be a my-orders page
+            onClick={() => navigate('/order-history')} // Assuming there might be a my-orders page
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
           >
